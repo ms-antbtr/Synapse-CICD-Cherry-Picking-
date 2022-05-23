@@ -1,0 +1,83 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "2022.3.1.1",
+    "parameters": {
+        "Location": {
+            "type": "string"
+        },
+        "VirtualNetwork_AddressSpace": {
+            "type": "string"
+        },
+        "VirtualNetwork_ddosProtectionPlanEnabled": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "VirtualNetwork_Name": {
+            "type": "string"
+        },
+        "VirtualNetwork_PrivateEndpointSubnetName": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "VirtualNetwork_Subnets": {
+            "type": "array",
+            "defaultValue": [],
+            "metadata": {
+                "sampleValue": [
+                    {
+                        "Name": "Default",
+                        "NetworkAddress": "192.168.7.0/26",
+                        "Delegations": [
+                            {
+                                "name": "delegation",
+                                "properties": {
+                                    "serviceName": "Microsoft.Web/serverfarms"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    },
+    "variables": {
+        "copy": [
+            {
+                "name": "VirtualNetwork_SubnetArray",
+                "count": "[length(parameters('VirtualNetwork_Subnets'))]",
+                "input": {
+                    "name": "[parameters('VirtualNetwork_Subnets')[copyIndex('VirtualNetwork_SubnetArray')].Name]",
+                    "properties": {
+                        "addressPrefix": "[parameters('VirtualNetwork_Subnets')[copyIndex('VirtualNetwork_SubnetArray')].NetworkAddress]",
+                        "privateEndpointNetworkPolicies": "[if(equals(parameters('VirtualNetwork_Subnets')[copyIndex('VirtualNetwork_SubnetArray')].Name, parameters('VirtualNetwork_PrivateEndpointSubnetName')), 'Disabled', 'Enabled')]",
+                        "delegations": "[parameters('VirtualNetwork_Subnets')[copyIndex('VirtualNetwork_SubnetArray')].Delegations]"
+                    }
+                }
+            }
+        ]
+    },
+    "resources": [
+        {
+            "name": "[parameters('VirtualNetwork_Name')]",
+            "type": "Microsoft.Network/VirtualNetworks",
+            "apiVersion": "2021-01-01",
+            "location": "[parameters('Location')]",
+            "dependsOn": [],
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[parameters('VirtualNetwork_AddressSpace')]"
+                    ]
+                },
+                "subnets": "[variables('VirtualNetwork_SubnetArray')]",
+                "enableDdosProtection": "[parameters('VirtualNetwork_ddosProtectionPlanEnabled')]"
+            }
+        }
+    ],
+    "outputs": {
+        "VirtualNetwork_Name": {
+            "type": "string",
+            "value": "[parameters('VirtualNetwork_Name')]"
+        }
+    }
+}

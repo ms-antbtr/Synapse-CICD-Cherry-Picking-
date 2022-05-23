@@ -1,0 +1,72 @@
+parameters:
+- name: image
+  displayName: File Filter
+  type: string
+#- name: 'param1'
+#  displayName: 'Parameter passed from original yaml file'
+#  type: string
+#  default: ''
+
+# Trigger this build on main branch only, scoped to the source folder and this pipeline file
+trigger:
+    branches:
+        include:
+            - main
+    paths:
+        include:
+            - Common/AzurePipelines/Variables/*
+            - DataProcessing/*
+            - Infrastructure/DataProcessing/*
+            - Infrastructure/Synapse/Pipelines/Templates/Build-SynapseSparkJob-job.template.yaml
+            - Infrastructure/Synapse/Source/pipeline/DataProcessingPipeline.json
+            - Infrastructure/Synapse/Source/sparkJobDefinition/DataProcessing.json
+            - Infrastructure/Synapse/Source/trigger/DataProcessingPipelineTrigger.json
+
+pool:
+    vmImage: windows-2022
+
+stages:
+    - stage: Build
+      condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+      jobs:
+          - template: Templates/Build-DataProcessing-job-template.yaml
+            parameters:
+              BuildType: main
+              image: ${{ parameters.image }}
+
+          - job: build
+            displayName: build 
+            steps:
+                - script: echo building with ${{ parameters.image }}
+        
+          - job: release
+            dependsOn: DataProcessingBuild
+            steps:
+                - checkout: none
+                - download: current
+            
+
+                - task: deploy-synapse-json@1
+                  displayName: 'Deploy Synapse JSON files'
+                  inputs:
+                    # Target resource parameters
+                        azureSubscription: 'Synpase'
+                        ResourceGroupName: 'AZ-TF-RG-NE99WE-SYNWKS-LAB2'
+                        WorkspaceName: 'tfazsynwkslab'
+
+
+
+
+# Synapse resource types
+                        NotebookPath: $(Pipeline.Workspace)/Project1/notebook
+                        LinkedServicePath: $(Pipeline.Workspace)/Project1/linkedService
+                        PipelinePath: $(Pipeline.Workspace)/Project1/pipeline
+                        SparkJobDefinitionReferencePath: $(Pipeline.Workspace)/Project1/sparkJobDefinition
+                        DataflowPath: $(Pipeline.Workspace)/Project1/dataflow
+                        sqlScriptsPath: $(Pipeline.Workspace)/Project1/sqlscripts
+                       # sqlPath: $(Pipeline.Workspace)/SynapseDeployment/sqlScripts
+
+      
+      #TriggerPath: $(Pipeline.Workspace)/SynapseDeployment/trigger
+      # Display
+                        Debug: true

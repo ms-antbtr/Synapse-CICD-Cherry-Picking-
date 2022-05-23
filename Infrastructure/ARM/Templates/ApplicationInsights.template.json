@@ -1,0 +1,107 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "2022.3.3.1",
+    "parameters": {
+        "ApplicationInsights_AddSecretsToKeyVault": {
+            "type": "bool",
+            "defaultValue": true
+        },
+        "ApplicationInsights_Name": {
+            "metadata": {
+                "description": "Application Insights workspace used for diagnostic data"
+            },
+            "type": "string"
+        },
+        "CreateDeleteLocks": {
+            "defaultValue": false,
+            "metadata": {
+                "description": "If true, the deployment will create delete locks on the created resources. The deployment principal requires the resource group Owner or User Access Administrator role for this to succeed."
+            },
+            "type": "bool"
+        },
+        "KeyVault_Name": {
+            "maxLength": 24,
+            "metadata": {
+                "description": "Name of the key vault to store the instrumentation key and workspace key into"
+            },
+            "minLength": 3,
+            "type": "String"
+        },
+        "KeyVault_ResourceGroupName": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().name]"
+        },
+        "Location": {
+            "type": "string"
+        },
+        "LogAnalyticsWorkspace_Name": {
+            "type": "string"
+        }
+    },
+    "variables": {
+        "LogAnalyticsWorkspace_ResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('LogAnalyticsWorkspace_Name'))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Insights/components",
+            "apiVersion": "2020-02-02",
+            "name": "[parameters('ApplicationInsights_Name')]",
+            "location": "[parameters('Location')]",
+            "kind": "web",
+            "properties": {
+                "Application_Type": "web",
+                "IngestionMode": "LogAnalytics",
+                "RetentionInDays": 90,
+                "WorkspaceResourceId": "[variables('LogAnalyticsWorkspace_ResourceId')]"
+            },
+            "resources": [
+                {
+                    "condition": "[parameters('CreateDeleteLocks')]",
+                    "name": "Microsoft.Authorization/Do Not Delete",
+                    "type": "providers/locks",
+                    "apiVersion": "2016-09-01",
+                    "dependsOn": [
+                        "[resourceId('microsoft.insights/components', parameters('ApplicationInsights_Name'))]"
+                    ],
+                    "properties": {
+                        "level": "CanNotDelete"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2019-10-01",
+            "name": "KeyVault-InstrumentationKey",
+            "resourceGroup": "[parameters('KeyVault_ResourceGroupName')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Insights/components', parameters('ApplicationInsights_Name'))]"
+            ],
+            "condition": "[and(parameters('ApplicationInsights_AddSecretsToKeyVault'), not(empty(parameters('KeyVault_Name'))))]",
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                    "contentVersion": "2022.3.3.1",
+                    "resources": [
+                        {
+                            "type": "Microsoft.KeyVault/vaults/secrets",
+                            "name": "[concat(parameters('KeyVault_Name'), '/InstrumentationKey')]",
+                            "apiVersion": "2019-09-01",
+                            "properties": {
+                                "value": "[reference(resourceId(resourceGroup().name, 'microsoft.insights/components', parameters('ApplicationInsights_Name')), '2015-05-01', 'Full').properties.InstrumentationKey]",
+                                "contentType": "Application Insights instrumentation key - Set automatically by ARM template deployment"
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "ApplicationInsights_Name": {
+            "type": "string",
+            "value": "[parameters('ApplicationInsights_Name')]"
+        }
+    }
+}

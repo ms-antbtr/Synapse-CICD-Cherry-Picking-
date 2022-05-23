@@ -1,0 +1,231 @@
+#
+# This template builds the infrastructure code, including processed config files, ARM templates and parameter files, and Ev2 deployment files
+#
+parameters:
+  # Name of the artifact to publish
+  - name: ArtifactName
+    type: string
+    default: SynapseWorkspace
+  # Type of build being run
+  - name: BuildType
+    type: string
+    values: [CI, PR, main]
+  # Optional job dependencies
+  - name: DependsOn
+    type: object
+    default: []
+  # Job displayName
+  - name: JobDisplayName
+    type: string
+    default: 'Synapse workspace build'
+  # Job name
+  - name: JobName
+    type: string
+    default: SynapseWorkspaceBuild
+  # Whether to publish artifacts, usually false for a PR build that doesn't use the artifacts for a release
+  - name: PublishArtifacts
+    type: boolean
+    default: true
+
+jobs:
+  - job: ${{ parameters.JobName }}
+    displayName: ${{ parameters.JobDisplayName }}
+    ${{ if gt(length(parameters.DependsOn), 0) }}:
+      dependsOn: ${{ parameters.DependsOn }}
+    variables:
+      BVTPath: $(Build.SourcesDirectory)/Infrastructure/Synapse/BVT/Build-SynapseWorkspace/SynapseWorkspace
+      EnvironmentConfigPath: $(Build.StagingDirectory)/Config/Environment
+      InfrastructurePath: $(Build.SourcesDirectory)/Infrastructure
+      PowerShellPath: $(Build.StagingDirectory)/PowerShell
+    steps:
+      #
+      # Show all the files in the pipeline workspace for reference
+      #
+      - template: /Common/AzurePipelines/Templates/ListPipelineWorkspaceFiles.steps.template.yaml
+
+      #
+      # Output pipeline variables for reference
+      #
+      - task: CmdLine@2
+        displayName: 'Show pipeline variables'
+        inputs:
+          script: |
+            echo InfrastructurePath    : $(InfrastructurePath)
+            echo EnvironmentConfigPath : $(EnvironmentConfigPath)
+            echo PowerShellPath        : $(PowerShellPath)
+            echo BVTPath               : $(BVTPath)
+
+      #
+      # Copy BVT files to artifact staging "BVT" folder
+      #
+      - task: CopyFiles@2
+        displayName: 'Copy BVT files to artifact staging'
+        inputs:
+          sourceFolder: $(BVTPath)
+          targetFolder: $(Build.StagingDirectory)/BVT
+
+      #
+      # Copy ServiceGroupRoot for Ev2 deployments
+      #
+      - task: CopyFiles@2
+        displayName: 'Copy Ev2 ServiceGroupRoot to artifact staging'
+        inputs:
+          sourceFolder: $(InfrastructurePath)/Ev2/ServiceGroupRoot
+          targetFolder: $(Build.StagingDirectory)/ServiceGroupRoot
+          contents: | # Copy all files except any that start with a period '.'
+            **/*
+            !**/.*
+
+      #
+      # Create Ev2 buildver.txt file using the current build type and number
+      #
+      - script: 'echo ${{ parameters.BuildType }}-$(Build.BuildNumber) > $(Build.StagingDirectory)/ServiceGroupRoot/buildver.txt'
+        displayName: 'Create Ev2 buildver.txt file (script)'
+
+      #
+      # Copy ARM template files to ServiceGroupRoot artifact staging. These files are used as-is with no further processing
+      #
+      - task: CopyFiles@2
+        displayName: 'Copy: Synapse ARM templates to artifact staging'
+        inputs:
+          sourceFolder: $(InfrastructurePath)/ARM/Templates
+          targetFolder: $(Build.StagingDirectory)/ServiceGroupRoot/ARM/Templates
+          contents: |
+            SynapseWorkspace.template.json
+            SynapseWorkspace_*.template.json
+
+      #
+      # Copy target environment Ev2 files to build artifacts
+      #
+      - task: CopyFiles@2
+        displayName: 'Copy target environment Ev2 files to artifact staging'
+        inputs:
+          sourceFolder: $(InfrastructurePath)/Ev2/Target
+          targetFolder: $(Build.StagingDirectory)/Target
+          contents: |
+            **/*
+            !**/.*
+
+      #
+      # Copy source JSON files from Synapse git-integration root folder, with some exclusions
+      #
+      - task: CopyFiles@2
+        displayName: 'Copy: Synapse source files'
+        inputs:
+          sourceFolder: $(Build.SourcesDirectory)/Infrastructure/Synapse/Source
+          targetFolder: $(Build.StagingDirectory)/Source/Synapse
+          contents: |
+            **/*.json
+            !credential/WorkspaceSystemIdentity.json
+            !integrationRuntime/AutoResolveIntegrationRuntime.json
+            !linkedService/*-WorkspaceDefaultSqlServer.json
+            !linkedService/*-WorkspaceDefaultStorage.json
+            !managedVirtualNetwork/default/managedPrivateEndpoint/synapse-ws-sql--*.json
+            !managedVirtualNetwork/default/managedPrivateEndpoint/synapse-ws-sqlOnDemand--*.json
+            !publish_config.json
+            !template-parameters-definition.json
+
+      - template: /Common/AzurePipelines/Templates/CopyPowerShellModuleToProfile.steps.template.yaml
+
+      #
+      # Build configs using common template
+      #
+      - template: /Common/AzurePipelines/Templates/Build-Config-steps.template.yaml
+        parameters:
+          BuildType: ${{ parameters.BuildType }}
+          ValidatorType: BuildUtil
+          SkipPowerShell: true
+          SkipSecretDefinition: true
+
+      #
+      # Create environment-specific ARM template parameter files using the values from the processed environment configuration files
+      #
+      - task: PowerShell@2
+        displayName: 'Create ARM template parameter files (pwsh)'
+        inputs:
+          errorActionPreference: stop
+          pwsh: true
+          targetType: inline
+          verbosePreference: silentlycontinue
+          script: |
+            Import-Module -Name ConfigFunctions
+
+            $ArmTemplateFiles = Get-ChildItem -Path '$(Build.StagingDirectory)/ServiceGroupRoot/ARM/Templates' -Filter *.json -File | Where-Object { -not $_.Name.StartsWith('_') }
+
+            Write-Host '##[section]ARM template files'
+
+            $ArmTemplateFiles | Select-Object -Property @{n='TemplateName'; e={$_.Name.Split('.')[0]}}, Name | Format-Table -AutoSize
+
+            foreach ($ArmTemplateFile in $ArmTemplateFiles) {
+                Write-Host ('=' * 120)
+
+                $Params = @{
+                    TemplateFile         = $ArmTemplateFile.FullName;
+                    ConfigPath           = '$(EnvironmentConfigPath)';
+                    OutputFolder         = '$(Build.StagingDirectory)/Target';
+                    OutputFolderSuffixes = @('ServiceGroupRoot', 'ARM', 'Parameters');
+                }
+
+                Build-ArmParameterFiles @Params
+            }
+
+      #
+      # Create ARM template copy parameter files from configs
+      #
+      # Resulting parameter files are placed in the Ev2 "ServiceGroupRoot/Target/<EnvironmentName>/ARM/Parameters" folder
+      #
+      - task: PowerShell@2
+        displayName: 'Create ARM template copy parameter files (pwsh)'
+        inputs:
+          errorActionPreference: stop
+          pwsh: true
+          targetType: inline
+          verbosePreference: silentlycontinue
+          script: |
+            Import-Module ConfigFunctions
+
+            $Params = @{
+                ArmTemplatePath      = '$(Build.StagingDirectory)/ServiceGroupRoot/ARM/Templates';
+                ConfigPath           = '$(EnvironmentConfigPath)';
+                OutputFolder         = '$(Build.StagingDirectory)/Target';
+                OutputFolderSuffixes = @('ServiceGroupRoot', 'ARM', 'Parameters');
+            }
+
+            ProcessTemplateParameterCopy @Params
+
+      - task: PowerShell@2
+        displayName: 'Create Synapse workspace deployment files from environment configs (pwsh)'
+        inputs:
+          errorActionPreference: stop
+          pwsh: true
+          targetType: inline
+          verbosePreference: silentlyContinue
+          script: |
+            Import-Module -Name ConfigFunctions
+            Import-Module -Name SynapseFunctions
+
+            $Params = @{
+                EnvironmentConfigPath = '$(EnvironmentConfigPath)';
+                OutputFolder          = '$(Build.StagingDirectory)/Target';
+                SynapseSourcePath     = '$(Build.StagingDirectory)/Source/Synapse';
+            }
+
+            Process-SynapseWorkspaceEnvironmentConfigs @Params
+
+      #
+      # Show build artifacts
+      #
+      - template: /Common/AzurePipelines/Templates/ListPipelineWorkspaceFiles.steps.template.yaml
+        parameters:
+          Path: $(Build.StagingDirectory)
+          Title: 'List build artifacts'
+
+      #
+      # Publish build artifacts if selected
+      #
+      - ${{ if parameters.PublishArtifacts }}:
+          - task: PublishPipelineArtifact@1
+            displayName: 'Publish artifact: ${{ parameters.ArtifactName }}'
+            inputs:
+              artifactName: ${{ parameters.ArtifactName }}
+              targetPath: $(Build.StagingDirectory)

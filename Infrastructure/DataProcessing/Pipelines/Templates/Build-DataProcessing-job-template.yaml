@@ -1,0 +1,26 @@
+parameters:
+  - name: BuildType
+    type: string
+    values: [CI, PR, main]
+  - name: RunPublishTasks
+    type: boolean
+    default: true
+  - name: 'image'
+    displayName: 'Parameter passed from original yaml file'
+    type: string
+    default: ''
+
+jobs:
+  - template: /Infrastructure/Synapse/Pipelines/Templates/Build-SynapseSparkJob-job.template.yaml
+    parameters:
+      ArtifactName: DataProcessing
+      BuildType: ${{ parameters.BuildType }}
+      image: ${{ parameters.image }}
+      ConfTemplateFile: $(Build.SourcesDirectory)/DataProcessing/src/main/resources/application.template.conf
+      ErrorOnFileMismatch: true
+      ExpectedFileListFile: $(Build.SourcesDirectory)/Infrastructure/DataProcessing/BVT/Build-DataProcessing/DataProcessing/ExpectedFileList.txt
+      JobName: DataProcessingBuild
+      RunPublishTasks: ${{ parameters.RunPublishTasks }}
+      SbtProjectPath: $(Build.SourcesDirectory)/DataProcessing
+      SynapseFilePrefixToPublish: DataProcessing
+      SynapsePath: $(Build.SourcesDirectory)/Infrastructure/Synapse/Source

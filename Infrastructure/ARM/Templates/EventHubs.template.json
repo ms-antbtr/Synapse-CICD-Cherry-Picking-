@@ -1,0 +1,251 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "2022.4.1.1",
+    "parameters": {
+        "EventHubsNamespace_DefaultNetworkRuleSet_AllowedIpRules": {
+            "type": "array",
+            "defaultValue": [],
+            "metadata": {
+                "sampleValue": [
+                    "131.107.0.0/16",
+                    "167.220.0.0/16"
+                ]
+            }
+        },
+        "EventHubsNamespace_DefaultNetworkRuleSet_DefaultAction": {
+            "type": "string",
+            "defaultValue": "Deny",
+            "allowedValues": [
+                "Allow",
+                "Deny"
+            ]
+        },
+        "EventHubsNamespace_DefaultNetworkRuleSet_VirtualNetworkNames": {
+            "type": "array",
+            "defaultValue": [],
+            "metadata": {
+                "sampleData": [
+                    "network1",
+                    "network2"
+                ]
+            }
+        },
+        "EventHubsNamespace_EventHubs": {
+            "type": "array",
+            "defaultValue": [],
+            "metadata": {
+                "sampleValue": [
+                    {
+                        "Name": "myevents",
+                        "MessageRetentionInDays": 5,
+                        "PartitionCount": 2
+                    }
+                ]
+            }
+        },
+        "EventHubsNamespace_IsAutoInflateEnabled": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Enable or disable AutoInflate"
+            }
+        },
+        "EventHubsNamespace_MaximumThroughputUnits": {
+            "type": "int",
+            "defaultValue": 5,
+            "minValue": 5,
+            "maxValue": 20,
+            "metadata": {
+                "description": "Enable or disable AutoInflate"
+            }
+        },
+        "EventHubsNamespace_Name": {
+            "type": "string",
+            "metadata": {
+                "description": "Name of EventHub namespace"
+            }
+        },
+        "EventHubsNamespace_SkuCapacity": {
+            "type": "int",
+            "defaultValue": 5,
+            "metadata": {
+                "description": "MessagingUnits for premium namespace"
+            }
+        },
+        "EventHubsNamespace_SkuName": {
+            "type": "string",
+            "allowedValues": [ "Basic", "Standard" ],
+            "defaultValue": "Standard",
+            "metadata": {
+                "description": "The messaging tier for service Bus namespace"
+            }
+        },
+        "Location": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().location]",
+            "metadata": {
+                "description": "Location for all resources."
+            }
+        },
+        "LogAnalyticsWorkspace_Name": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "LogAnalyticsWorkspace_ResourceGroupName": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().name]"
+        },
+        "VirtualNetwork_Name": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "The name of the virtual network configured with the cosmosDb account"
+            }
+        },
+        "VirtualNetwork_ResourceGroupName": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().name]",
+            "metadata": {
+                "description": "The name of the resource group in which the virtual network resides"
+            }
+        }
+    },
+    "resources": [
+        {
+            "apiVersion": "2017-04-01",
+            "name": "[parameters('EventHubsNamespace_Name')]",
+            "type": "Microsoft.EventHub/namespaces",
+            "location": "[parameters('Location')]",
+            "sku": {
+                "name": "[parameters('EventHubsNamespace_SkuName')]",
+                "tier": "[parameters('EventHubsNamespace_SkuName')]",
+                "capacity": "[parameters('EventHubsNamespace_SkuCapacity')]"
+            },
+            "properties": {
+                "isAutoInflateEnabled": "[parameters('EventHubsNamespace_IsAutoInflateEnabled')]",
+                "maximumThroughputUnits": "[if(parameters('EventHubsNamespace_IsAutoInflateEnabled'), parameters('EventHubsNamespace_MaximumThroughputUnits'), json('null'))]"
+            },
+            "resources": [
+                {
+                    "type": "providers/diagnosticsettings",
+                    "name": "Microsoft.Insights/Send to Log Analytics",
+                    "apiVersion": "2017-05-01-preview",
+                    "location": "[parameters('Location')]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.EventHub/namespaces', parameters('EventHubsNamespace_Name'))]"
+                    ],
+                    "properties": {
+                        "workspaceId": "[resourceId(parameters('LogAnalyticsWorkspace_ResourceGroupName'), 'Microsoft.OperationalInsights/workspaces', parameters('LogAnalyticsWorkspace_Name'))]",
+                        "logs": [
+                            {
+                                "category": "ArchiveLogs",
+                                "enabled": true
+                            },
+                            {
+                                "category": "AutoScaleLogs",
+                                "enabled": true
+                            },
+                            {
+                                "category": "CustomerManagedKeyUserLogs",
+                                "enabled": true
+                            },
+                            {
+                                "category": "EventHubVNetConnectionEvent",
+                                "enabled": true
+                            },
+                            {
+                                "category": "KafkaCoordinatorLogs",
+                                "enabled": true
+                            },
+                            {
+                                "category": "KafkaUserErrorLogs",
+                                "enabled": true
+                            },
+                            {
+                                "category": "OperationalLogs",
+                                "enabled": true
+                            }
+                        ],
+                        "metrics": [
+                            {
+                                "category": "AllMetrics",
+                                "enabled": true
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "apiVersion": "2017-04-01",
+            "type": "Microsoft.EventHub/namespaces/eventhubs",
+            "dependsOn": [
+                "[concat('Microsoft.EventHub/namespaces/', parameters('EventHubsNamespace_Name'))]"
+            ],
+            "copy": {
+                "name": "EventHubs",
+                "mode": "Serial",
+                "count": "[length(parameters('EventHubsNamespace_EventHubs'))]"
+            },
+            "name": "[concat(parameters('EventHubsNamespace_Name'), '/', parameters('EventHubsNamespace_EventHubs')[copyIndex()].Name)]",
+            "properties": {
+                "messageRetentionInDays": "[parameters('EventHubsNamespace_EventHubs')[copyIndex()].MessageRetentionInDays]",
+                "partitionCount": "[parameters('EventHubsNamespace_EventHubs')[copyIndex()].PartitionCount]"
+            },
+            "resources": [
+                {
+                    "type": "authorizationRules",
+                    "apiVersion": "2017-04-01",
+                    "name": "ConsumerSendListen",
+                    "location": "[parameters('Location')]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.EventHub/namespaces/eventhubs', parameters('EventHubsNamespace_Name'), parameters('EventHubsNamespace_EventHubs')[copyIndex()].Name)]"
+                    ],
+                    "properties": {
+                        "rights": [
+                            "Listen",
+                            "Send"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "apiVersion": "2018-01-01-preview",
+            "name": "[concat(parameters('EventHubsNamespace_Name'), '/default')]",
+            "type": "Microsoft.EventHub/namespaces/networkruleset",
+            "dependsOn": [
+                "[concat('Microsoft.EventHub/namespaces/', parameters('EventHubsNamespace_Name'))]"
+            ],
+            "properties": {
+                "defaultAction": "[parameters('EventHubsNamespace_DefaultNetworkRuleSet_DefaultAction')]",
+                "copy": [
+                    {
+                        "name": "virtualNetworkRules",
+                        "count": "[length(parameters('EventHubsNamespace_DefaultNetworkRuleSet_VirtualNetworkNames'))]",
+                        "input": {
+                            "subnet": {
+                                "id": "[resourceId(parameters('VirtualNetwork_ResourceGroupName'), 'Microsoft.Network/virtualNetworks/subnets', parameters('VirtualNetwork_Name'), parameters('EventHubsNamespace_DefaultNetworkRuleSet_VirtualNetworkNames')[copyIndex('virtualNetworkRules')])]"
+                            },
+                            "ignoreMissingVnetServiceEndpoint": false
+                        }
+                    },
+                    {
+                        "name": "ipRules",
+                        "count": "[length(parameters('EventHubsNamespace_DefaultNetworkRuleSet_AllowedIpRules'))]",
+                        "input": {
+                            "ipMask": "[parameters('EventHubsNamespace_DefaultNetworkRuleSet_AllowedIpRules')[copyIndex('ipRules')]]",
+                            "action": "Allow"
+                        }
+                    }
+                ]
+            }
+        }
+    ],
+    "outputs": {
+        "EventHubsNamespace_Reference": {
+            "type": "object",
+            "value": "[reference(resourceId('Microsoft.EventHub/namespaces', parameters('EventHubsNamespace_Name')))]"
+        }
+    }
+}

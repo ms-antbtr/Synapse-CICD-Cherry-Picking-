@@ -1,0 +1,149 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "2022.4.1.1",
+    "parameters": {
+        "ApplicationInsights_Name": {
+            "type": "string"
+        },
+        "AzureMonitorPrivateLinkScope_IngestionAccessMode": {
+            "type": "string",
+            "defaultValue": "Open",
+            "allowedValues": [
+                "Open",
+                "PrivateOnly"
+            ]
+
+        },
+        "AzureMonitorPrivateLinkScope_Name": {
+            "type": "string"
+        },
+        "AzureMonitorPrivateLinkScope_QueryAccessMode": {
+            "type": "string",
+            "defaultValue": "Open",
+            "allowedValues": [
+                "Open",
+                "PrivateOnly"
+            ]
+        },
+        "Diagnostics_LogAnalyticsWorkspace_Name": {
+            "type": "string"
+        },
+        "Location": {
+            "type": "string"
+        },
+        "VirtualNetwork_Name": {
+            "type": "string"
+        },
+        "VirtualNetwork_PrivateEndpointSubnetName": {
+            "type": "string"
+        },
+        "VirtualNetwork_ResourceGroupName": {
+            "type": "string"
+        }
+    },
+    "variables": {
+        "AzureMonitorPrivateLinkScope_PrivateEndpointName": "[concat(parameters('AzureMonitorPrivateLinkScope_Name'), '-pe')]",
+        "AzureMonitorPrivateLinkScope_PrivateLinkDnsZones": [
+            "privatelink.agentsvc.azure-automation.net",
+            "privatelink.monitor.azure.com",
+            "privatelink.ods.opinsights.azure.com",
+            "privatelink.oms.opinsights.azure.com"
+        ],
+        "VirtualNetwork_PrivateEndpointSubnetId": "[resourceId(parameters('VirtualNetwork_ResourceGroupName'), 'Microsoft.Network/virtualNetworks/subnets', parameters('VirtualNetwork_Name'), parameters('VirtualNetwork_PrivateEndpointSubnetName'))]",
+        "VirtualNetwork_ResourceId": "[resourceId(parameters('VirtualNetwork_ResourceGroupName'), 'Microsoft.Network/virtualNetworks', parameters('VirtualNetwork_Name'))]"
+    },
+    "resources": [
+        {
+            "name": "[parameters('AzureMonitorPrivateLinkScope_Name')]",
+            "type": "microsoft.insights/privatelinkscopes",
+            "location": "global",
+            "apiVersion": "2021-07-01-preview",
+            "properties": {
+                "accessModeSettings": {
+                    "queryAccessMode": "[parameters('AzureMonitorPrivateLinkScope_QueryAccessMode')]",
+                    "ingestionAccessMode": "[parameters('AzureMonitorPrivateLinkScope_IngestionAccessMode')]",
+                    "exclusions": []
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Network/privateDnsZones",
+            "apiVersion": "2018-09-01",
+            "name": "[variables('AzureMonitorPrivateLinkScope_PrivateLinkDnsZones')[copyIndex()]]",
+            "location": "global",
+            "condition": "[not(empty(parameters('VirtualNetwork_Name')))]",
+            "copy": {
+                "name": "PrivateDnsZones",
+                "count": "[length(variables('AzureMonitorPrivateLinkScope_PrivateLinkDnsZones'))]"
+            }
+        },
+        {
+            "type": "Microsoft.Network/privateEndpoints",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('AzureMonitorPrivateLinkScope_PrivateEndpointName')]",
+            "location": "[parameters('Location')]",
+            "dependsOn": [
+                "[resourceId('microsoft.insights/privatelinkscopes', parameters('AzureMonitorPrivateLinkScope_Name'))]"
+            ],
+            "condition": "[not(empty(parameters('VirtualNetwork_Name')))]",
+            "properties": {
+                "privateLinkServiceConnections": [
+                    {
+                        "name": "[variables('AzureMonitorPrivateLinkScope_PrivateEndpointName')]",
+                        "properties": {
+                            "privateLinkServiceId": "[resourceId('microsoft.insights/privatelinkscopes', parameters('AzureMonitorPrivateLinkScope_Name'))]",
+                            "groupIds": [
+                                "azuremonitor"
+                            ]
+                        }
+                    }
+                ],
+                "subnet": {
+                    "id": "[variables('VirtualNetwork_PrivateEndpointSubnetId')]"
+                }
+            }
+        },
+        {
+            "type": "microsoft.insights/privatelinkscopes/scopedresources",
+            "apiVersion": "2021-07-01-preview",
+            "name": "[concat(parameters('AzureMonitorPrivateLinkScope_Name'), '/scoped-', parameters('ApplicationInsights_Name'))]",
+            "dependsOn": [
+                "[resourceId('microsoft.insights/privatelinkscopes', parameters('AzureMonitorPrivateLinkScope_Name'))]"
+            ],
+            "properties": {
+                "linkedResourceId": "[resourceId('microsoft.insights/components', parameters('ApplicationInsights_Name'))]"
+            }
+        },
+        {
+            "type": "microsoft.insights/privatelinkscopes/scopedresources",
+            "apiVersion": "2021-07-01-preview",
+            "name": "[concat(parameters('AzureMonitorPrivateLinkScope_Name'), '/scoped-', parameters('Diagnostics_LogAnalyticsWorkspace_Name'))]",
+            "dependsOn": [
+                "[resourceId('microsoft.insights/privatelinkscopes', parameters('AzureMonitorPrivateLinkScope_Name'))]"
+            ],
+            "properties": {
+                "linkedResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('Diagnostics_LogAnalyticsWorkspace_Name'))]"
+            }
+        },
+        {
+            "copy": {
+                "name": "VirtualNetworkLinkCopy",
+                "count": "[length(variables('AzureMonitorPrivateLinkScope_PrivateLinkDnsZones'))]"
+            },
+            "condition": "[not(empty(parameters('VirtualNetwork_Name')))]",
+            "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+            "apiVersion": "2018-09-01",
+            "name": "[concat(variables('AzureMonitorPrivateLinkScope_PrivateLinkDnsZones')[copyIndex()], '/', parameters('VirtualNetwork_Name'), '-link')]",
+            "location": "global",
+            "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                    "id": "[variables('VirtualNetwork_ResourceId')]"
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('AzureMonitorPrivateLinkScope_PrivateLinkDnsZones')[copyIndex()])]"
+            ]
+        }
+    ]
+}

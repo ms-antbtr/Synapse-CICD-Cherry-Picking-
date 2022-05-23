@@ -1,0 +1,569 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "2022.4.4.1",
+    "parameters": {
+        "KeyVault_Name": {
+            "type": "string"
+        },
+        "KeyVault_ResourceGroup_Name": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().name]"
+        },
+        "Location": {
+            "type": "string"
+        },
+        "LogAnalyticsWorkspace_Name": {
+            "defaultValue": "",
+            "metadata": {
+                "description": "If provided, the name of the Log Analytics workspace to receive the key vault diagnostic data"
+            },
+            "type": "string"
+        },
+        "LogAnalyticsWorkspace_ResourceGroupName": {
+            "defaultValue": "[resourceGroup().name]",
+            "metadata": {
+                "description": "Resource group containing the Log Analytics workspace, if in a different resource group"
+            },
+            "type": "string"
+        },
+        "SecurityLogs_StorageAccount_Name": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "SynapseWorkspace_AllowedTenantId": {
+            "type": "String",
+            "defaultValue": "[subscription().subscriptionId]",
+            "metadata": {
+                "description": "The allowed AAD Tenant ID for linking"
+            }
+        },
+        "SynapseWorkspace_ConfigureLogAnalytics": {
+            "type": "bool",
+            "defaultValue": true
+        },
+        "SynapseWorkspace_CustomerManagedKey_IdentityType": {
+            "type": "string",
+            "defaultValue": "SystemAssigned",
+            "allowedValues": [
+                "SystemAssigned",
+                "UserAssigned"
+            ]
+        },
+        "SynapseWorkspace_CustomerManagedKey_SecretName": {
+            "type": "string",
+            "defaultValue": "SynapseWorkspaceEncryptionKey"
+        },
+        "SynapseWorkspace_CustomerManagedKey_Size": {
+            "type": "int",
+            "defaultValue": 2048,
+            "allowedValues": [ 2048, 3027, 4096 ]
+        },
+        "SynapseWorkspace_CustomerManagedKey_Type": {
+            "type": "string",
+            "defaultValue": "RSA",
+            "allowedValues": [
+                "RSA"
+            ]
+        },
+        "SynapseWorkspace_DefaultDataLakeStorage_AccessTier": {
+            "type": "string",
+            "defaultValue": "Hot",
+            "allowedValues": [ "Cool", "Hot" ]
+        },
+        "SynapseWorkspace_DefaultDataLakeStorage_AccountName": {
+            "type": "String"
+        },
+        "SynapseWorkspace_DefaultDataLakeStorage_AccountType": {
+            "type": "string",
+            "defaultValue": "Standard_LRS",
+            "allowedValues": [
+                "Standard_LRS",
+                "Standard_ZRS",
+                "Standard_GRS",
+                "Standard_RAGRS"
+            ]
+        },
+        "SynapseWorkspace_DefaultDataLakeStorage_AllowBlobPublicAccess": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "SynapseWorkspace_DefaultDataLakeStorage_AllowSharedKeyAccess": {
+            "type": "bool",
+            "defaultValue": true
+        },
+        "SynapseWorkspace_DefaultDataLakeStorage_ContainerName": {
+            "type": "String",
+            "defaultValue": "synapse",
+            "metadata": {
+                "description": "Azure Storage Account Container Name. It is recommended to leave this at the default value, 'synapse'"
+            }
+        },
+        "SynapseWorkspace_DefaultDataLakeStorage_DefaultOAuth": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "SynapseWorkspace_DefaultDataLakeStorage_Kind": {
+            "type": "string",
+            "allowedValues": [
+                "StorageV2",
+                "BlockBlobStorage"
+            ],
+            "defaultValue": "StorageV2"
+        },
+        "SynapseWorkspace_DefaultDataLakeStorage_NetworkAclsBypass": {
+            "type": "string",
+            "defaultValue": "AzureServices"
+        },
+        "SynapseWorkspace_DefaultDataLakeStorage_NetworkAclsDefaultAction": {
+            "type": "string",
+            "defaultValue": "Allow",
+            "allowedValues": [
+                "Allow",
+                "Deny"
+            ]
+        },
+        "SynapseWorkspace_FirewallRules": {
+            "type": "array",
+            "defaultValue": []
+        },
+        "SynapseWorkspace_Location": {
+            "defaultValue": "",
+            "type": "String",
+            "metadata": {
+                "description": "Location for Synapse workspace, if different from the default location"
+            }
+        },
+        "SynapseWorkspace_ManagedNetwork_PreventDataExfiltration": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "SynapseWorkspace_ManagedResourceGroupName": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "SynapseWorkspace_Name": {
+            "type": "String",
+            "metadata": {
+                "description": "Name of the Azure Synapse workspace to create."
+            }
+        },
+        "SynapseWorkspace_SqlAdmin_Password": {
+            "type": "secureString",
+            "defaultValue": "",
+            "metadata": {
+                "description": "SQL Admin Password"
+            }
+        },
+        "SynapseWorkspace_SqlAdmin_UserName": {
+            "type": "String",
+            "defaultValue": "mercadmin",
+            "metadata": {
+                "description": "SQL Admin UserName"
+            }
+        },
+        "SynapseWorkspace_UseCustomerManagedKey": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "SynapseWorkspace_UseExistingStorageAccount": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "SynapseWorkspace_UserAssignedIdentity_Name": {
+            "type": "string"
+        },
+        "VulnerabilityAssessment_StorageAccount_Name": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "VulnerabilityAssessment_StorageAccount_Path": {
+            "type": "string",
+            "defaultValue": "vulnerability-assessment"
+        }
+    },
+    "variables": {
+        "EncryptionCmk_SAMI": {
+            "cmk": {
+                "kekIdentity": {
+                    "useSystemAssignedIdentity": true
+                },
+                "key": {
+                    "name": "default",
+                    "keyVaultUrl": "[concat('https://', parameters('KeyVault_Name'), '.vault.azure.net/keys/', parameters('SynapseWorkspace_CustomerManagedKey_SecretName'))]"
+                }
+            }
+        },
+        "EncryptionCmk_UAMI": {
+            "cmk": {
+                "kekIdentity": {
+                    "userAssignedIdentity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('SynapseWorkspace_UserAssignedIdentity_Name'))]",
+                    "useSystemAssignedIdentity": false
+                },
+                "key": {
+                    "name": "default",
+                    "keyVaultUrl": "[concat('https://', parameters('KeyVault_Name'), '.vault.azure.net/keys/', parameters('SynapseWorkspace_CustomerManagedKey_SecretName'))]"
+                }
+            }
+        },
+        "LogAnalyticsWorkspace_ResourceId": "[resourceId(parameters('LogAnalyticsWorkspace_ResourceGroupName'), 'Microsoft.OperationalInsights/workspaces', parameters('LogAnalyticsWorkspace_Name'))]",
+        "SynapseWorkspace_Location": "[if(not(empty(parameters('SynapseWorkspace_Location'))), parameters('SynapseWorkspace_Location'), parameters('Location'))]",
+        "SynapseWorkspace_ManagedResourceGroupName": "[if(not(empty(parameters('SynapseWorkspace_ManagedResourceGroupName'))), parameters('SynapseWorkspace_ManagedResourceGroupName'), concat('Managed-Synapse-', parameters('SynapseWorkspace_Name'), '-rg'))]",
+        "SynapseWorkspace_ResourceId": "[resourceId('Microsoft.Synapse/workspaces', parameters('SynapseWorkspace_Name'))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+            "apiVersion": "2018-11-30",
+            "name": "[parameters('SynapseWorkspace_UserAssignedIdentity_Name')]",
+            "location": "[variables('SynapseWorkspace_Location')]"
+        },
+        {
+            "type": "Microsoft.Resources/deployments",
+            "name": "[take(concat('KeyVaultAccessPolicy-UAMI-', deployment().name), 64)]",
+            "apiVersion": "2021-04-01",
+            "condition": "[parameters('SynapseWorkspace_UseCustomerManagedKey')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('SynapseWorkspace_UserAssignedIdentity_Name'))]"
+            ],
+            "resourceGroup": "[parameters('KeyVault_ResourceGroup_Name')]",
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                    "contentVersion": "2022.3.4.1",
+                    "resources": [
+                        {
+                            "type": "Microsoft.KeyVault/vaults/keys",
+                            "apiVersion": "2021-06-01-preview",
+                            "condition": "[parameters('SynapseWorkspace_UseCustomerManagedKey')]",
+                            "name": "[concat(parameters('KeyVault_Name'), '/', parameters('SynapseWorkspace_CustomerManagedKey_SecretName'))]",
+                            "location": "[resourceGroup().location]",
+                            "properties": {
+                                "kty": "[parameters('SynapseWorkspace_CustomerManagedKey_Type')]",
+                                "keySize": "[parameters('SynapseWorkspace_CustomerManagedKey_Size')]"
+                            }
+                        },
+                        {
+                            "type": "Microsoft.KeyVault/vaults/accessPolicies",
+                            "name": "[concat(parameters('KeyVault_Name'), '/add')]",
+                            "apiVersion": "2019-09-01",
+                            "properties": {
+                                "accessPolicies": [
+                                    {
+                                        "objectId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('SynapseWorkspace_UserAssignedIdentity_Name')), '2018-11-30', 'full').properties.principalId]",
+                                        "permissions": {
+                                            "secrets": [
+                                                "list",
+                                                "get"
+                                            ],
+                                            "keys": [
+                                                "list",
+                                                "get",
+                                                "wrapKey",
+                                                "unwrapKey"
+                                            ]
+                                        },
+                                        "tenantId": "[subscription().tenantId]"
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "[parameters('SynapseWorkspace_DefaultDataLakeStorage_AccountName')]",
+            "type": "Microsoft.Storage/storageAccounts",
+            "condition": "[not(parameters('SynapseWorkspace_UseExistingStorageAccount'))]",
+            "apiVersion": "2021-06-01",
+            "location": "[parameters('Location')]",
+            "properties": {
+                "accessTier": "[parameters('SynapseWorkspace_DefaultDataLakeStorage_AccessTier')]",
+                "allowBlobPublicAccess": "[parameters('SynapseWorkspace_DefaultDataLakeStorage_AllowBlobPublicAccess')]",
+                "allowCrossTenantReplication": false,
+                "allowSharedKeyAccess": "[parameters('SynapseWorkspace_DefaultDataLakeStorage_AllowSharedKeyAccess')]",
+                "defaultToOAuthAuthentication": "[parameters('SynapseWorkspace_DefaultDataLakeStorage_DefaultOAuth')]",
+                "isHnsEnabled": true,
+                "minimumTlsVersion": "TLS1_2",
+                "networkAcls": {
+                    "bypass": "[parameters('SynapseWorkspace_DefaultDataLakeStorage_NetworkAclsBypass')]",
+                    "defaultAction": "[parameters('SynapseWorkspace_DefaultDataLakeStorage_NetworkAclsDefaultAction')]"
+                },
+                "supportsHttpsTrafficOnly": true
+            },
+            "sku": {
+                "name": "[parameters('SynapseWorkspace_DefaultDataLakeStorage_AccountType')]"
+            },
+            "kind": "[parameters('SynapseWorkspace_DefaultDataLakeStorage_Kind')]"
+        },
+        {
+            "name": "[concat(parameters('SynapseWorkspace_DefaultDataLakeStorage_AccountName'), '/default/', parameters('SynapseWorkspace_DefaultDataLakeStorage_ContainerName'))]",
+            "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+            "apiVersion": "2021-06-01",
+            "properties": {
+                "publicAccess": "None"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('SynapseWorkspace_DefaultDataLakeStorage_AccountName'))]"
+            ]
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces",
+            "apiVersion": "2021-06-01-preview",
+            "name": "[parameters('SynapseWorkspace_Name')]",
+            "location": "[variables('SynapseWorkspace_Location')]",
+            "dependsOn": [
+                "[take(concat('KeyVaultAccessPolicy-UAMI-', deployment().name), 64)]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('SynapseWorkspace_DefaultDataLakeStorage_AccountName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices/containers', parameters('SynapseWorkspace_DefaultDataLakeStorage_AccountName'), 'default', parameters('SynapseWorkspace_DefaultDataLakeStorage_ContainerName'))]"
+            ],
+            "identity": {
+                "type": "SystemAssigned,UserAssigned",
+                "userAssignedIdentities": {
+                    "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('SynapseWorkspace_UserAssignedIdentity_Name'))]": {}
+                }
+            },
+            "properties": {
+                "defaultDataLakeStorage": {
+                    "accountUrl": "[concat('https://', parameters('SynapseWorkspace_DefaultDataLakeStorage_AccountName'), '.dfs.core.windows.net')]",
+                    "filesystem": "[parameters('SynapseWorkspace_DefaultDataLakeStorage_ContainerName')]"
+                },
+                "encryption": "[if(parameters('SynapseWorkspace_UseCustomerManagedKey'), if(equals(parameters('SynapseWorkspace_CustomerManagedKey_IdentityType'), 'SystemAssigned'), variables('EncryptionCmk_SAMI'), variables('EncryptionCmk_UAMI')), json('null'))]",
+                "managedResourceGroupName": "[variables('SynapseWorkspace_ManagedResourceGroupName')]",
+                "managedVirtualNetwork": "default",
+                "managedVirtualNetworkSettings": {
+                    "allowedAadTenantIdsForLinking": [
+                        "[parameters('SynapseWorkspace_AllowedTenantId')]"
+                    ],
+                    "preventDataExfiltration": "[parameters('SynapseWorkspace_ManagedNetwork_PreventDataExfiltration')]"
+                },
+                "publicNetworkAccess": "Enabled",
+                "sqlAdministratorLogin": "[parameters('SynapseWorkspace_SqlAdmin_UserName')]",
+                "SqlAdministratorLoginPassword": "[parameters('SynapseWorkspace_SqlAdmin_Password')]"
+            },
+            "resources": [
+                {
+                    "type": "auditingSettings",
+                    "apiVersion": "2021-06-01",
+                    "name": "Default",
+                    "dependsOn": [
+                        "[variables('SynapseWorkspace_ResourceId')]"
+                    ],
+                    "properties": {
+                        "retentionDays": 0,
+                        "auditActionsAndGroups": [],
+                        "isStorageSecondaryKeyInUse": false,
+                        "isAzureMonitorTargetEnabled": false,
+                        "state": "Disabled",
+                        "storageAccountSubscriptionId": "00000000-0000-0000-0000-000000000000"
+                    }
+                },
+                {
+                    "type": "extendedAuditingSettings",
+                    "apiVersion": "2021-06-01",
+                    "name": "Default",
+                    "dependsOn": [
+                        "[variables('SynapseWorkspace_ResourceId')]",
+                        "[resourceId('Microsoft.Synapse/workspaces/auditingSettings', parameters('SynapseWorkspace_Name'), 'Default')]"
+                    ],
+                    "properties": {
+                        "retentionDays": 0,
+                        "auditActionsAndGroups": [],
+                        "isStorageSecondaryKeyInUse": false,
+                        "isAzureMonitorTargetEnabled": false,
+                        "state": "Disabled",
+                        "storageAccountSubscriptionId": "00000000-0000-0000-0000-000000000000"
+                    }
+                },
+                {
+                    "type": "securityAlertPolicies",
+                    "apiVersion": "2021-06-01",
+                    "name": "Default",
+                    "condition": "[greater(length(parameters('SecurityLogs_StorageAccount_Name')), 0)]",
+                    "dependsOn": [
+                        "[variables('SynapseWorkspace_ResourceId')]",
+                        "[resourceId('Microsoft.Synapse/workspaces/extendedAuditingSettings', parameters('SynapseWorkspace_Name'), 'Default')]"
+                    ],
+                    "properties": {
+                        "state": "Enabled",
+                        "emailAddresses": [
+                            "mercurydri@microsoft.com",
+                            "mercops@microsoft.com"
+                        ],
+                        "emailAccountAdmins": true,
+                        "storageEndpoint": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('SecurityLogs_StorageAccount_Name')), '2019-04-01').primaryEndpoints.blob]",
+                        "storageAccountAccessKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('SecurityLogs_StorageAccount_Name')), '2019-04-01').keys[0].value]",
+                        "retentionDays": 365
+                    }
+                },
+                {
+                    "type": "vulnerabilityAssessments",
+                    "apiVersion": "2021-06-01",
+                    "name": "Default",
+                    "condition": "[greater(length(parameters('VulnerabilityAssessment_StorageAccount_Name')), 0)]",
+                    "dependsOn": [
+                        "[variables('SynapseWorkspace_ResourceId')]",
+                        "[resourceId('Microsoft.Synapse/workspaces/securityAlertPolicies', parameters('SynapseWorkspace_Name'), 'Default')]"
+                    ],
+                    "properties": {
+                        "recurringScans": {
+                            "isEnabled": false,
+                            "emailSubscriptionAdmins": true
+                        },
+                        "storageContainerPath": "[concat(reference(resourceId('Microsoft.Storage/storageAccounts', parameters('VulnerabilityAssessment_StorageAccount_Name')), '2019-04-01').primaryEndpoints.blob, parameters('VulnerabilityAssessment_StorageAccount_Path'))]",
+                        "storageAccountAccessKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('VulnerabilityAssessment_StorageAccount_Name')), '2019-04-01').keys[0].value]"
+                    }
+                },
+                {
+                    "type": "firewallRules",
+                    "apiVersion": "2021-06-01",
+                    "name": "AllowAllWindowsAzureIps",
+                    "dependsOn": [
+                        "[variables('SynapseWorkspace_ResourceId')]"
+                    ],
+                    "properties": {
+                        "startIpAddress": "0.0.0.0",
+                        "endIpAddress": "0.0.0.0"
+                    }
+                },
+                {
+                    "type": "integrationruntimes",
+                    "apiVersion": "2021-06-01",
+                    "name": "AutoResolveIntegrationRuntime",
+                    "dependsOn": [
+                        "[variables('SynapseWorkspace_ResourceId')]"
+                    ],
+                    "properties": {
+                        "type": "Managed",
+                        "typeProperties": {
+                            "computeProperties": {
+                                "location": "AutoResolve",
+                                "dataFlowProperties": {
+                                    "computeType": "General",
+                                    "coreCount": 8,
+                                    "timeToLive": 0
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "condition": "[and(parameters('SynapseWorkspace_ConfigureLogAnalytics'), not(empty(parameters('LogAnalyticsWorkspace_Name'))))]",
+                    "name": "microsoft.insights/Send To Log Analytics",
+                    "type": "providers/diagnosticSettings",
+                    "apiVersion": "2017-05-01-preview",
+                    "location": "[variables('SynapseWorkspace_Location')]",
+                    "dependsOn": [
+                        "[variables('SynapseWorkspace_ResourceId')]"
+                    ],
+                    "properties": {
+                        "name": "Send To Log Analytics",
+                        "workspaceId": "[variables('LogAnalyticsWorkspace_ResourceId')]",
+                        "logs": [
+                            {
+                                "category": "SynapseRbacOperations",
+                                "enabled": true
+                            },
+                            {
+                                "category": "GatewayApiRequests",
+                                "enabled": true
+                            },
+                            {
+                                "category": "BuiltinSqlReqsEnded",
+                                "enabled": true
+                            },
+                            {
+                                "category": "IntegrationPipelineRuns",
+                                "enabled": true
+                            },
+                            {
+                                "category": "IntegrationActivityRuns",
+                                "enabled": true
+                            },
+                            {
+                                "category": "IntegrationTriggerRuns",
+                                "enabled": true
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "condition": "[and(not(empty(parameters('SynapseWorkspace_FirewallRules'))), greater(length(parameters('SynapseWorkspace_FirewallRules')), 0))]",
+            "type": "Microsoft.Synapse/workspaces/firewallRules",
+            "apiVersion": "2021-06-01-preview",
+            "name": "[concat(parameters('SynapseWorkspace_Name'), '/', parameters('SynapseWorkspace_FirewallRules')[copyIndex()].Name)]",
+            "dependsOn": [
+                "[variables('SynapseWorkspace_ResourceId')]"
+            ],
+            "copy": {
+                "name": "FirewallRuleCopy",
+                "count": "[length(parameters('SynapseWorkspace_FirewallRules'))]",
+                "mode": "parallel"
+            },
+            "properties": {
+                "endIpAddress": "[parameters('SynapseWorkspace_FirewallRules')[copyIndex()].EndIpAddress]",
+                "startIpAddress": "[parameters('SynapseWorkspace_FirewallRules')[copyIndex()].StartIpAddress]"
+            }
+        },
+        {
+            "type": "Microsoft.Resources/deployments",
+            "name": "[take(concat('KeyVaultAccessPolicy-SAMI-', deployment().name), 64)]",
+            "apiVersion": "2021-04-01",
+            "dependsOn": [
+                "[variables('SynapseWorkspace_ResourceId')]"
+            ],
+            "resourceGroup": "[parameters('KeyVault_ResourceGroup_Name')]",
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                    "contentVersion": "2022.3.4.1",
+                    "resources": [
+                        {
+                            "apiVersion": "2019-09-01",
+                            "name": "[concat(parameters('KeyVault_Name'), '/add')]",
+                            "properties": {
+                                "accessPolicies": [
+                                    {
+                                        "objectId": "[reference(variables('SynapseWorkspace_ResourceId'), '2019-06-01-preview', 'Full').identity.principalId]",
+                                        "permissions": {
+                                            "keys": [
+                                                "list",
+                                                "get",
+                                                "wrapKey",
+                                                "unwrapKey"
+                                            ],
+                                            "secrets": [
+                                                "get",
+                                                "list"
+                                            ]
+                                        },
+                                        "tenantId": "[subscription().tenantId]"
+                                    }
+                                ]
+                            },
+                            "type": "Microsoft.KeyVault/vaults/accessPolicies"
+                        }
+                    ]
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "SynapseWorkspace_Name": {
+            "type": "string",
+            "value": "[parameters('SynapseWorkspace_Name')]"
+        },
+        "SynapseWorkspace_Reference": {
+            "type": "object",
+            "value": "[reference(variables('SynapseWorkspace_ResourceId'))]"
+        },
+        "SynapseWorkspace_UserAssignedManagedIdentity": {
+            "type": "object",
+            "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('SynapseWorkspace_UserAssignedIdentity_Name')))]"
+        }
+    }
+}

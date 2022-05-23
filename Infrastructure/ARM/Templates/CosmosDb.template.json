@@ -1,0 +1,393 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "2022.4.1.1",
+    "parameters": {
+        "CosmosDb_Account_AllowedIpAddresses": {
+            "type": "array",
+            "defaultValue": [],
+            "metadata": {
+                "SampleValue": [
+                    "192.168.1.1",
+                    "192.168.100.0/24"
+                ]
+            }
+        },
+        "CosmosDb_Account_Name": {
+            "type": "string",
+            "metadata": {
+                "description": "Cosmos DB account name, max length 44 characters"
+            }
+        },
+        "CosmosDb_Account_PublicNetworkAccess": {
+            "type": "string",
+            "defaultValue": "Enabled",
+            "allowedValues": [
+                "Enabled",
+                "Disabled"
+            ]
+        },
+        "CosmosDb_Account_SecondaryLocation": {
+            "type": "string",
+            "defaultValue": "",
+            "allowedValues": [
+                "",
+                "centralus",
+                "eastus",
+                "eastus2",
+                "northcentralus",
+                "southcentralus",
+                "westcentralus",
+                "westus",
+                "westus2"
+            ]
+        },
+        "CosmosDb_Database_AutomaticFailover": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Enable automatic failover for regions. Ignored when Multi-Master is enabled"
+            }
+        },
+        "CosmosDb_Database_ConsistencyPolicy_MaxIntervalInSeconds": {
+            "type": "int",
+            "minValue": 5,
+            "defaultValue": 300,
+            "maxValue": 86400,
+            "metadata": {
+                "description": "Max lag time (minutes). Required for BoundedStaleness. Valid ranges, Single Region: 5 to 84600. Multi Region: 300 to 86400."
+            }
+        },
+        "CosmosDb_Database_ConsistencyPolicy_MaxStalenessPrefix": {
+            "type": "int",
+            "minValue": 10,
+            "defaultValue": 100000,
+            "maxValue": 2147483647,
+            "metadata": {
+                "description": "Max stale requests. Required for BoundedStaleness. Valid ranges, Single Region: 10 to 1000000. Multi Region: 100000 to 1000000."
+            }
+        },
+        "CosmosDb_Database_Containers": {
+            "type": "array",
+            "defaultValue": [
+                {
+                    "Name": "DataPolicy",
+                    "PartitionKey": "storageLayer"
+                },
+                {
+                    "Name": "DataServiceProcessingMetadata",
+                    "PartitionKey": "objectName"
+                },
+                {
+                    "Name": "FileMetadata",
+                    "PartitionKey": "objectName"
+                },
+                {
+                    "Name": "MaintenanceMetadata",
+                    "PartitionKey": "storageLayer"
+                },
+                {
+                    "Name": "ProcessingMetadata",
+                    "PartitionKey": "objectName"
+                },
+                {
+                    "Name": "SuccessRegistry",
+                    "PartitionKey": "objectName"
+                },
+                {
+                    "Name": "ToBeProcessedRegistry",
+                    "PartitionKey": "objectName"
+                }
+            ],
+            "metadata": {
+                "sampleValue": [
+                    {
+                        "Name": "FileMetadata",
+                        "PartitionKey": "objectName"
+                    },
+                    {
+                        "Name": "SuccessRegistry"
+                    }
+                ]
+            }
+        },
+        "CosmosDb_Database_DefaultConsistencyLevel": {
+            "type": "string",
+            "defaultValue": "Session",
+            "allowedValues": [ "Eventual", "ConsistentPrefix", "Session", "BoundedStaleness", "Strong" ],
+            "metadata": {
+                "description": "The default consistency level of the Cosmos DB account."
+            }
+        },
+        "CosmosDb_Database_IsVirtualNetworkFilterEnabled": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Indicates whether virtual network should be configured with the cosmosdb account or not"
+            }
+        },
+        "CosmosDb_Database_MultipleWriteLocations": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Enable multi-master to make all regions writable."
+            }
+        },
+        "CosmosDb_Database_Name": {
+            "type": "string",
+            "metadata": {
+                "description": "The name for the SQL database"
+            }
+        },
+        "CosmosDb_Database_SharedThroughput": {
+            "type": "int",
+            "defaultValue": 400,
+            "minValue": 400,
+            "maxValue": 1000000,
+            "metadata": {
+                "description": "The throughput for the database to be shared"
+            }
+        },
+        "CosmosDb_Database_VirtualNetworkRule_Subnets": {
+            "type": "array",
+            "defaultValue": []
+        },
+        "CosmosDb_PrimaryAccount_Name": {
+            "type": "string"
+        },
+        "CosmosDb_PrimaryAccount_ResourceGroupName": {
+            "type": "string"
+        },
+        "CosmosDb_StoreSecretsInKeyVault": {
+            "type": "bool",
+            "defaultValue": true
+        },
+        "KeyVault_Name": {
+            "maxLength": 24,
+            "minLength": 3,
+            "type": "String",
+            "defaultValue": ""
+        },
+        "KeyVault_ResourceGroupName": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().name]"
+        },
+        "Location": {
+            "type": "string",
+            "metadata": {
+                "description": "Location for the Cosmos DB account."
+            }
+        },
+        "ServiceLocationType": {
+            "type": "string",
+            "allowedValues": [
+                "Primary",
+                "Secondary"
+            ]
+        },
+        "VirtualNetwork_Name": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "The name of the virtual network configured with the cosmosDb account"
+            }
+        },
+        "VirtualNetwork_ResourceGroup_Name": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().name]",
+            "metadata": {
+                "description": "The name of the resource group in which the virtual network resides"
+            }
+        }
+    },
+    "variables": {
+        "CosmosDb_AccountName_LowerCase": "[toLower(parameters('CosmosDb_Account_Name'))]",
+        "CosmosDb_Database_ConsistencyPolicy": {
+            "Eventual": {
+                "defaultConsistencyLevel": "Eventual"
+            },
+            "ConsistentPrefix": {
+                "defaultConsistencyLevel": "ConsistentPrefix"
+            },
+            "Session": {
+                "defaultConsistencyLevel": "Session"
+            },
+            "BoundedStaleness": {
+                "defaultConsistencyLevel": "BoundedStaleness",
+                "maxStalenessPrefix": "[parameters('CosmosDb_Database_ConsistencyPolicy_MaxStalenessPrefix')]",
+                "maxIntervalInSeconds": "[parameters('CosmosDb_Database_ConsistencyPolicy_MaxIntervalInSeconds')]"
+            },
+            "Strong": {
+                "defaultConsistencyLevel": "Strong"
+            }
+        },
+        "CosmosDb_Locations": "[if(not(empty(parameters('CosmosDb_Account_SecondaryLocation'))), createArray(parameters('Location'), parameters('CosmosDb_Account_SecondaryLocation')), createArray(parameters('Location')))]",
+        "CosmosDb_PrimaryAccount_ResourceId": "[resourceId(parameters('CosmosDb_PrimaryAccount_ResourceGroupName'), 'Microsoft.DocumentDB/databaseAccounts', toLower(parameters('CosmosDb_PrimaryAccount_Name')))]",
+        "VirtualNetwork_ResourceId": "[resourceId(parameters('VirtualNetwork_ResourceGroup_Name'), 'Microsoft.Network/virtualNetworks/', parameters('VirtualNetwork_Name'))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.DocumentDB/databaseAccounts",
+            "name": "[variables('CosmosDb_AccountName_LowerCase')]",
+            "apiVersion": "2021-07-01-preview",
+            "kind": "GlobalDocumentDB",
+            "location": "[parameters('Location')]",
+            "condition": "[equals('Primary', parameters('ServiceLocationType'))]",
+            "properties": {
+                "consistencyPolicy": "[variables('CosmosDb_Database_ConsistencyPolicy')[parameters('CosmosDb_Database_DefaultConsistencyLevel')]]",
+                "copy": [
+                    {
+                        "count": "[length(parameters('CosmosDb_Account_AllowedIpAddresses'))]",
+                        "input": {
+                            "ipAddressOrRange": "[parameters('CosmosDb_Account_AllowedIpAddresses')[copyIndex('ipRules')]]"
+                        },
+                        "name": "ipRules"
+                    },
+                    {
+                        "count": "[length(variables('CosmosDb_Locations'))]",
+                        "input": {
+                            "failoverPriority": "[copyIndex('locations')]",
+                            "locationName": "[variables('CosmosDb_Locations')[copyIndex('locations')]]"
+                        },
+                        "name": "locations"
+                    },
+                    {
+                        "count": "[length(parameters('CosmosDb_Database_VirtualNetworkRule_Subnets'))]",
+                        "input": {
+                            "id": "[concat(variables('VirtualNetwork_ResourceId'), '/subnets/', parameters('CosmosDb_Database_VirtualNetworkRule_Subnets')[copyIndex('virtualNetworkRules')])]",
+                            "ignoreMissingVNetServiceEndpoint": false
+                        },
+                        "name": "virtualNetworkRules"
+                    }
+                ],
+                "databaseAccountOfferType": "Standard",
+                "enableAutomaticFailover": "[parameters('CosmosDb_Database_AutomaticFailover')]",
+                "enableMultipleWriteLocations": "[parameters('CosmosDb_Database_MultipleWriteLocations')]",
+                "isVirtualNetworkFilterEnabled": "[parameters('CosmosDb_Database_IsVirtualNetworkFilterEnabled')]",
+                "publicNetworkAccess": "[parameters('CosmosDb_Account_PublicNetworkAccess')]"
+            }
+        },
+        {
+            "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases",
+            "name": "[concat(variables('CosmosDb_AccountName_LowerCase'), '/', parameters('CosmosDb_Database_Name'))]",
+            "apiVersion": "2021-07-01-preview",
+            "condition": "[equals('Primary', parameters('ServiceLocationType'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('CosmosDb_AccountName_LowerCase'))]"
+            ],
+            "properties": {
+                "resource": {
+                    "id": "[parameters('CosmosDb_Database_Name')]"
+                },
+                "options": { "throughput": "[parameters('CosmosDb_Database_SharedThroughput')]" }
+            }
+        },
+        {
+            "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+            "name": "[concat(variables('CosmosDb_AccountName_LowerCase'), '/', parameters('CosmosDb_Database_Name'), '/', parameters('CosmosDb_Database_Containers')[copyIndex()].Name)]",
+            "apiVersion": "2021-07-01-preview",
+            "condition": "[equals('Primary', parameters('ServiceLocationType'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', variables('CosmosDb_AccountName_LowerCase'), parameters('CosmosDb_Database_Name'))]"
+            ],
+            "copy": {
+                "name": "ContainerCopy",
+                "count": "[length(parameters('CosmosDb_Database_Containers'))]"
+            },
+            "properties": {
+                "resource": {
+                    "id": "[parameters('CosmosDb_Database_Containers')[copyIndex()].Name]",
+                    "partitionKey": {
+                        "paths": [
+                            "[concat('/', parameters('CosmosDb_Database_Containers')[copyIndex()].PartitionKey)]"
+                        ],
+                        "kind": "Hash"
+                    },
+                    "indexingPolicy": {
+                        "indexingMode": "consistent",
+                        "automatic": true,
+                        "includedPaths": [
+                            {
+                                "path": "/*"
+                            }
+                        ],
+                        "excludedPaths": [
+                            {
+                                "path": "/\"_etag\"/?"
+                            }
+                        ]
+                    },
+                    "conflictResolutionPolicy": {
+                        "mode": "LastWriterWins",
+                        "conflictResolutionPath": "/_ts"
+                    }
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2019-10-01",
+            "name": "[take(concat('KeyVaultSecrets-', deployment().name), 64)]",
+            "resourceGroup": "[parameters('KeyVault_ResourceGroupName')]",
+            "condition": "[and(parameters('CosmosDb_StoreSecretsInKeyVault'), not(empty(parameters('KeyVault_Name'))))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('CosmosDb_AccountName_LowerCase'))]"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                    "contentVersion": "2022.4.1.1",
+                    "resources": [
+                        {
+                            "type": "Microsoft.KeyVault/vaults/secrets",
+                            "name": "[concat(parameters('KeyVault_Name'), '/CosmosDbConnectionString')]",
+                            "apiVersion": "2019-09-01",
+                            "properties": {
+                                "value": "[listConnectionStrings(variables('CosmosDb_PrimaryAccount_ResourceId'), '2021-07-01-preview').connectionStrings[0].connectionString]",
+                                "contentType": "Cosmos Db connection string - Set automatically by ARM template deployment"
+                            }
+                        },
+                        {
+                            "type": "Microsoft.KeyVault/vaults/secrets",
+                            "name": "[concat(parameters('KeyVault_Name'), '/CosmosKey')]",
+                            "apiVersion": "2019-09-01",
+                            "properties": {
+                                "value": "[listKeys(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('CosmosDb_AccountName_LowerCase')), '2021-07-01-preview').primaryMasterKey]",
+                                "contentType": "Cosmos Db account key - Set automatically by ARM template deployment"
+                            }
+                        },
+                        {
+                            "type": "Microsoft.KeyVault/vaults/secrets",
+                            "name": "[concat(parameters('KeyVault_Name'), '/CosmosUri')]",
+                            "apiVersion": "2019-09-01",
+                            "properties": {
+                                "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('CosmosDb_AccountName_LowerCase')), '2021-07-01-preview').documentEndpoint]",
+                                "contentType": "Cosmos Db connection URI - Set automatically by ARM template deployment"
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "CosmosDb_Account_Name": {
+            "type": "string",
+            "value": "[parameters('CosmosDb_Account_Name')]"
+        },
+        "CosmosDb_Account_Reference": {
+            "type": "object",
+            "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('CosmosDb_AccountName_LowerCase')))]",
+            "condition": "[equals('Primary', parameters('ServiceLocationType'))]"
+        },
+        "CosmosDb_Database_Name": {
+            "type": "string",
+            "value": "[parameters('CosmosDb_Database_Name')]"
+        },
+        "CosmosDb_Database_Reference": {
+            "type": "object",
+            "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', variables('CosmosDb_AccountName_LowerCase'), parameters('CosmosDb_Database_Name')))]",
+            "condition": "[equals('Primary', parameters('ServiceLocationType'))]"
+        }
+    }
+}

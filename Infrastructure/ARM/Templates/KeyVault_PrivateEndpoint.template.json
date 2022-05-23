@@ -1,0 +1,127 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "2022.3.1.1",
+    "parameters": {
+        "KeyVault_Name": {
+            "maxLength": 24,
+            "minLength": 3,
+            "type": "String"
+        },
+        "Location": {
+            "type": "string"
+        },
+        "PrivateEndpoints_ProtectAllResource": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "PrivateEndpoints_ProtectedResources": {
+            "type": "array",
+            "defaultValue": []
+        },
+        "VirtualNetwork_Name": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "VirtualNetwork_PrivateEndpointSubnetName": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "VirtualNetwork_ResourceGroupName": {
+            "type": "string",
+            "defaultValue": ""
+        }
+    },
+    "variables": {
+        "KeyVault_CreatePrivateEndpoints": "[and(not(empty(parameters('VirtualNetwork_Name'))), not(empty(parameters('VirtualNetwork_PrivateEndpointSubnetName'))), or(parameters('PrivateEndpoints_ProtectAllResource'), contains(parameters('PrivateEndpoints_ProtectedResources'), 'KeyVault')))]",
+        "KeyVault_PrivateEndpoint_Name": "[concat(parameters('KeyVault_Name'), '-pe')]",
+        "KeyVault_PrivateLinkDnsZone": "privatelink.vaultcore.azure.net",
+        "VirtualNetwork_PrivateEndpointSubnetId": "[resourceId(parameters('VirtualNetwork_ResourceGroupName'), 'Microsoft.Network/virtualNetworks/subnets', parameters('VirtualNetwork_Name'), parameters('VirtualNetwork_PrivateEndpointSubnetName'))]",
+        "VirtualNetwork_ResourceId": "[resourceId(parameters('VirtualNetwork_ResourceGroupName'), 'Microsoft.Network/virtualNetworks', parameters('VirtualNetwork_Name'))]"
+    },
+    "resources": [
+        {
+            "condition": "[variables('KeyVault_CreatePrivateEndpoints')]",
+            "type": "Microsoft.Network/privateDnsZones",
+            "apiVersion": "2018-09-01",
+            "name": "[variables('KeyVault_PrivateLinkDnsZone')]",
+            "location": "global"
+        },
+        {
+            "condition": "[variables('KeyVault_CreatePrivateEndpoints')]",
+            "type": "Microsoft.Network/privateEndpoints",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('KeyVault_PrivateEndpoint_Name')]",
+            "location": "[parameters('Location')]",
+            "properties": {
+                "privateLinkServiceConnections": [
+                    {
+                        "name": "[variables('KeyVault_PrivateEndpoint_Name')]",
+                        "properties": {
+                            "privateLinkServiceId": "[resourceId('Microsoft.KeyVault/vaults', parameters('KeyVault_Name'))]",
+                            "groupIds": [
+                                "vault"
+                            ]
+                        }
+                    }
+                ],
+                "subnet": {
+                    "id": "[variables('VirtualNetwork_PrivateEndpointSubnetId')]"
+                }
+            }
+        },
+        {
+            "condition": "[variables('KeyVault_CreatePrivateEndpoints')]",
+            "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+            "apiVersion": "2020-11-01",
+            "name": "[concat(variables('KeyVault_PrivateEndpoint_Name'), '/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('KeyVault_PrivateLinkDnsZone'))]",
+                "[resourceId('Microsoft.Network/privateEndpoints', variables('KeyVault_PrivateEndpoint_Name'))]"
+            ],
+            "properties": {
+                "privateDnsZoneConfigs": [
+                    {
+                        "name": "[replace(variables('KeyVault_PrivateLinkDnsZone'), '.', '-')]",
+                        "properties": {
+                            "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('KeyVault_PrivateLinkDnsZone'))]"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "condition": "[variables('KeyVault_CreatePrivateEndpoints')]",
+            "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+            "apiVersion": "2018-09-01",
+            "name": "[concat(variables('KeyVault_PrivateLinkDnsZone'), '/', parameters('VirtualNetwork_Name'), '-link')]",
+            "location": "global",
+            "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                    "id": "[variables('VirtualNetwork_ResourceId')]"
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('KeyVault_PrivateLinkDnsZone'))]"
+            ]
+        }
+    ],
+    "outputs": {
+        "KeyVault_CreatePrivateEndpoints": {
+            "type": "bool",
+            "value": "[variables('KeyVault_CreatePrivateEndpoints')]"
+        },
+        "KeyVault_Name": {
+            "type": "string",
+            "value": "[parameters('KeyVault_Name')]"
+        },
+        "KeyVault_ResourceGroupName": {
+            "type": "string",
+            "value": "[resourceGroup().name]"
+        },
+        "KeyVault_VaultUri": {
+            "type": "string",
+            "value": "[reference(parameters('KeyVault_Name'), '2018-02-14').vaultUri]"
+        }
+    }
+}

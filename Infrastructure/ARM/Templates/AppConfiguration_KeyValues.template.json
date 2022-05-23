@@ -1,0 +1,144 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "2022.3.8.1",
+    "parameters": {
+        "AppConfiguration_KeyValues": {
+            "type": "array",
+            "defaultValue": [],
+            "metadata": {
+                "sampleValue": [
+                    {
+                        "Name": "ServerName",
+                        "Value": "MyServer",
+                        "ContentType": "text/plain"
+                    }
+                ]
+            }
+        },
+        "AppConfiguration_Name": {
+            "type": "string",
+            "minLength": 3
+        },
+        "ApplicationInsights_Name": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "CosmosDb_Account_Name": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "CosmosDb_Database_Name": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "KeyVault_Name": {
+            "type": "String",
+            "defaultValue": ""
+        },
+        "SynapseWorkspace_Name": {
+            "type": "String",
+            "defaultValue": ""
+        },
+        "Telemetry_EnvironmentType": {
+            "type": "String",
+            "defaultValue": ""
+        }
+    },
+    "variables": {
+        "AppConfigApiVersion": "2021-03-01-preview"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.AppConfiguration/configurationStores/keyValues",
+            "apiVersion": "[variables('AppConfigApiVersion')]",
+            "condition": "[not(empty(parameters('AppConfiguration_KeyValues')))]",
+            "copy": {
+                "count": "[length(parameters('AppConfiguration_KeyValues'))]",
+                "name": "AppConfigKeyValues"
+            },
+            "name": "[concat(parameters('AppConfiguration_Name'), '/', parameters('AppConfiguration_KeyValues')[copyIndex()].Name)]",
+            "properties": {
+                "contentType": "[parameters('AppConfiguration_KeyValues')[copyIndex()].ContentType]",
+                "value": "[parameters('AppConfiguration_KeyValues')[copyIndex()].Value]"
+            }
+        },
+        {
+            "type": "Microsoft.AppConfiguration/configurationStores/keyValues",
+            "apiVersion": "[variables('AppConfigApiVersion')]",
+            "condition": "[not(empty(parameters('CosmosDb_Account_Name')))]",
+            "name": "[concat(parameters('AppConfiguration_Name'), '/CosmosDbAccountName')]",
+            "properties": {
+                "contentType": "text/plain",
+                "value": "[parameters('CosmosDb_Account_Name')]"
+            }
+        },
+        {
+            "type": "Microsoft.AppConfiguration/configurationStores/keyValues",
+            "apiVersion": "[variables('AppConfigApiVersion')]",
+            "condition": "[not(empty(parameters('CosmosDb_Database_Name')))]",
+            "name": "[concat(parameters('AppConfiguration_Name'), '/CosmosDbDatabaseName')]",
+            "properties": {
+                "contentType": "text/plain",
+                "value": "[parameters('CosmosDb_Database_Name')]"
+            }
+        },
+        {
+            "type": "Microsoft.AppConfiguration/configurationStores/keyValues",
+            "apiVersion": "[variables('AppConfigApiVersion')]",
+            "condition": "[not(empty(parameters('ApplicationInsights_Name')))]",
+            "name": "[concat(parameters('AppConfiguration_Name'), '/InstrumentationKey')]",
+            "properties": {
+                "contentType": "text/plain",
+                "value": "[reference(resourceId('microsoft.insights/components', parameters('ApplicationInsights_Name')), '2015-05-01', 'Full').properties.InstrumentationKey]"
+            }
+        },
+        {
+            "type": "Microsoft.AppConfiguration/configurationStores/keyValues",
+            "apiVersion": "[variables('AppConfigApiVersion')]",
+            "condition": "[not(empty(parameters('KeyVault_Name')))]",
+            "name": "[concat(parameters('AppConfiguration_Name'), '/KeyVaultName')]",
+            "properties": {
+                "contentType": "text/plain",
+                "value": "[parameters('KeyVault_Name')]"
+            }
+        },
+        {
+            "type": "Microsoft.AppConfiguration/configurationStores/keyValues",
+            "apiVersion": "[variables('AppConfigApiVersion')]",
+            "condition": "[not(empty(parameters('SynapseWorkspace_Name')))]",
+            "name": "[concat(parameters('AppConfiguration_Name'), '/SynapseWorkspaceName')]",
+            "properties": {
+                "contentType": "text/plain",
+                "value": "[parameters('SynapseWorkspace_Name')]"
+            }
+        },
+        {
+            "type": "Microsoft.AppConfiguration/configurationStores/keyValues",
+            "apiVersion": "[variables('AppConfigApiVersion')]",
+            "name": "[concat(parameters('AppConfiguration_Name'), '/Telemetry.EnvironmentType')]",
+            "condition": "[not(empty(parameters('Telemetry_EnvironmentType')))]",
+            "properties": {
+                "contentType": "text/plain",
+                "value": "[parameters('Telemetry_EnvironmentType')]"
+            }
+        },
+        {
+            "type": "Microsoft.AppConfiguration/configurationStores/keyValues",
+            "apiVersion": "[variables('AppConfigApiVersion')]",
+            "name": "[concat(parameters('AppConfiguration_Name'), '/Telemetry.ServiceLine')]",
+            "properties": {
+                "contentType": "text/plain",
+                "value": "Statutory Reporting"
+            }
+        },
+        {
+            "type": "Microsoft.AppConfiguration/configurationStores/keyValues",
+            "apiVersion": "[variables('AppConfigApiVersion')]",
+            "name": "[concat(parameters('AppConfiguration_Name'), '/Telemetry.ServiceOffering')]",
+            "properties": {
+                "contentType": "text/plain",
+                "value": "Finance"
+            }
+        }
+    ]
+}

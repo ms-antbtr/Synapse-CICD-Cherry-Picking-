@@ -1,0 +1,98 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "2022.3.4.1",
+    "parameters": {
+        "DiagnosticStorageAccount_AccessTier": {
+            "type": "string",
+            "defaultValue": "Hot",
+            "allowedValues": [ "Cool", "Hot" ]
+        },
+        "DiagnosticStorageAccount_AccountType": {
+            "type": "string",
+            "defaultValue": "Standard_LRS",
+            "allowedValues": [
+                "Standard_LRS",
+                "Standard_ZRS",
+                "Standard_GZRS",
+                "Standard_GRS"
+            ]
+        },
+        "DiagnosticStorageAccount_AllowBlobPublicAccess": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "DiagnosticStorageAccount_AllowCrossTenantReplication": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "DiagnosticStorageAccount_AllowSharedKeyAccess": {
+            "type": "bool",
+            "defaultValue": true
+        },
+        "DiagnosticStorageAccount_DefaultOAuth": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "DiagnosticStorageAccount_IsContainerSoftDeleteEnabled": {
+            "type": "bool",
+            "defaultValue": true
+        },
+        "DiagnosticStorageAccount_Name": {
+            "type": "string"
+        },
+        "DiagnosticStorageAccount_NetworkAclsBypass": {
+            "type": "string",
+            "defaultValue": "AzureServices,Logging,Metrics"
+        },
+        "DiagnosticStorageAccount_NetworkAclsDefaultAction": {
+            "type": "string",
+            "defaultValue": "Allow",
+            "allowedValues": [
+                "Allow",
+                "Deny"
+            ]
+        },
+        "Location": {
+            "type": "string"
+        }
+    },
+    "resources": [
+        {
+            "name": "[parameters('DiagnosticStorageAccount_Name')]",
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2021-06-01",
+            "location": "[parameters('Location')]",
+            "properties": {
+                "accessTier": "[parameters('DiagnosticStorageAccount_AccessTier')]",
+                "allowBlobPublicAccess": "[parameters('DiagnosticStorageAccount_AllowBlobPublicAccess')]",
+                "allowCrossTenantReplication": "[parameters('DiagnosticStorageAccount_AllowCrossTenantReplication')]",
+                "allowSharedKeyAccess": "[parameters('DiagnosticStorageAccount_AllowSharedKeyAccess')]",
+                "defaultToOAuthAuthentication": "[parameters('DiagnosticStorageAccount_DefaultOAuth')]",
+                "isHnsEnabled": false,
+                "minimumTlsVersion": "TLS1_2",
+                "networkAcls": {
+                    "bypass": "[parameters('DiagnosticStorageAccount_NetworkAclsBypass')]",
+                    "defaultAction": "[parameters('DiagnosticStorageAccount_NetworkAclsDefaultAction')]"
+                },
+                "supportsHttpsTrafficOnly": true
+            },
+            "sku": {
+                "name": "[parameters('DiagnosticStorageAccount_AccountType')]"
+            },
+            "kind": "StorageV2"
+        },
+        {
+            "name": "[concat(parameters('DiagnosticStorageAccount_Name'), '/default')]",
+            "type": "Microsoft.Storage/storageAccounts/blobServices",
+            "apiVersion": "2021-06-01",
+            "properties": {
+                "containerDeleteRetentionPolicy": {
+                    "enabled": "[parameters('DiagnosticStorageAccount_IsContainerSoftDeleteEnabled')]"
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('DiagnosticStorageAccount_Name'))]"
+            ]
+        }
+    ]
+}

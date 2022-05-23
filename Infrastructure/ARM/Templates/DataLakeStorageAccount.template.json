@@ -1,0 +1,130 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "2022.3.3.1",
+    "parameters": {
+        "DataLakeStorageAccount_AccessTier": {
+            "type": "string",
+            "allowedValues": [ "Cool", "Hot" ]
+        },
+        "DataLakeStorageAccount_AllowBlobPublicAccess": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "DataLakeStorageAccount_AllowCrossTenantReplication": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "DataLakeStorageAccount_AllowSharedKeyAccess": {
+            "type": "bool",
+            "defaultValue": true
+        },
+        "DataLakeStorageAccount_DefaultOAuth": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "DataLakeStorageAccount_IsContainerSoftDeleteEnabled": {
+            "type": "bool",
+            "defaultValue": true
+        },
+        "DataLakeStorageAccount_Kind": {
+            "type": "string",
+            "allowedValues": [
+                "StorageV2",
+                "BlockBlobStorage"
+            ],
+            "defaultValue": "StorageV2"
+        },
+        "DataLakeStorageAccount_Name": {
+            "type": "string"
+        },
+        "DataLakeStorageAccount_NetworkAclsBypass": {
+            "type": "string",
+            "defaultValue": "AzureServices"
+        },
+        "DataLakeStorageAccount_NetworkAclsDefaultAction": {
+            "type": "string",
+            "defaultValue": "Allow",
+            "allowedValues": [
+                "Allow",
+                "Deny"
+            ]
+        },
+        "DataLakeStorageAccount_SkuName": {
+            "type": "string",
+            "allowedValues": [
+                "Premium_LRS",
+                "Premium_ZRS",
+                "Standard_LRS",
+                "Standard_ZRS",
+                "Standard_GZRS",
+                "Standard_GRS",
+                "Standard_RAGZRS",
+                "Standard_RAGRS"
+            ]
+        },
+        "Location": {
+            "type": "string"
+        }
+    },
+    "variables": {
+        "DataLakeStorageAccount_ResourceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('DataLakeStorageAccount_Name'))]"
+    },
+    "resources": [
+        {
+            "name": "[parameters('DataLakeStorageAccount_Name')]",
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2021-06-01",
+            "location": "[parameters('Location')]",
+            "properties": {
+                "accessTier": "[parameters('DataLakeStorageAccount_AccessTier')]",
+                "allowBlobPublicAccess": "[parameters('DataLakeStorageAccount_AllowBlobPublicAccess')]",
+                "allowCrossTenantReplication": "[parameters('DataLakeStorageAccount_AllowCrossTenantReplication')]",
+                "allowSharedKeyAccess": "[parameters('DataLakeStorageAccount_AllowSharedKeyAccess')]",
+                "defaultToOAuthAuthentication": "[parameters('DataLakeStorageAccount_DefaultOAuth')]",
+                "isHnsEnabled": true,
+                "minimumTlsVersion": "TLS1_2",
+                "networkAcls": {
+                    "bypass": "[parameters('DataLakeStorageAccount_NetworkAclsBypass')]",
+                    "defaultAction": "[parameters('DataLakeStorageAccount_NetworkAclsDefaultAction')]"
+                },
+                "supportsHttpsTrafficOnly": true
+            },
+            "sku": {
+                "name": "[parameters('DataLakeStorageAccount_SkuName')]"
+            },
+            "kind": "[parameters('DataLakeStorageAccount_Kind')]",
+            "resources": [
+                {
+                    "type": "blobServices/containers",
+                    "apiVersion": "2021-06-01",
+                    "name": "/default/data",
+                    "properties": {
+                        "publicAccess": "None"
+                    },
+                    "dependsOn": [
+                        "[variables('DataLakeStorageAccount_ResourceId')]"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "[concat(parameters('DataLakeStorageAccount_Name'), '/default')]",
+            "type": "Microsoft.Storage/storageAccounts/blobServices",
+            "apiVersion": "2021-06-01",
+            "properties": {
+                "containerDeleteRetentionPolicy": {
+                    "enabled": "[parameters('DataLakeStorageAccount_IsContainerSoftDeleteEnabled')]"
+                }
+            },
+            "dependsOn": [
+                "[variables('DataLakeStorageAccount_ResourceId')]"
+            ]
+        }
+    ],
+    "outputs": {
+        "DataLakeStorageAccount_Name": {
+            "type": "string",
+            "value": "[parameters('DataLakeStorageAccount_Name')]"
+        }
+    }
+}

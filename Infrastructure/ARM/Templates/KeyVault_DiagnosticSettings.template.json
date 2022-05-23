@@ -1,0 +1,57 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "2022.3.9.1",
+    "parameters": {
+        "KeyVault_Name": {
+            "maxLength": 24,
+            "minLength": 3,
+            "type": "String"
+        },
+        "Location": {
+            "type": "string"
+        },
+        "LogAnalyticsWorkspace_Name": {
+            "metadata": {
+                "description": "Log Analytics workspace used for diagnostic data"
+            },
+            "type": "string"
+        }
+    },
+    "variables": {
+        "LogAnalyticsWorkspace_ResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('LogAnalyticsWorkspace_Name'))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.KeyVault/vaults/providers/diagnosticsettings",
+            "name": "[concat(parameters('KeyVault_Name'), '/Microsoft.Insights/Send to Log Analytics')]",
+            "apiVersion": "2017-05-01-preview",
+            "location": "[parameters('Location')]",
+            "condition": "[not(empty(parameters('LogAnalyticsWorkspace_Name')))]",
+            "properties": {
+                "workspaceId": "[variables('LogAnalyticsWorkspace_ResourceId')]",
+                "logs": [
+                    {
+                        "category": "AuditEvent",
+                        "enabled": true
+                    }
+                ],
+                "metrics": [
+                    {
+                        "category": "AllMetrics",
+                        "enabled": true
+                    }
+                ]
+            }
+        }
+    ],
+    "outputs": {
+        "KeyVault_Name": {
+            "type": "string",
+            "value": "[parameters('KeyVault_Name')]"
+        },
+        "LogAnalyticsWorkspace_Name": {
+            "type": "string",
+            "value": "[parameters('LogAnalyticsWorkspace_Name')]"
+        }
+    }
+}

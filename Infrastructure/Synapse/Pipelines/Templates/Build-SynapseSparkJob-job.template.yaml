@@ -1,0 +1,107 @@
+parameters:
+  - name: ArtifactName
+    type: string
+  - name: ArtifactFolderName
+    type: string
+    default: bin
+  - name: BuildType
+    type: string
+    values: [CI, PR, main]
+  - name: IncludeCodeCoverage
+    type: boolean
+    default: true
+  - name: IncludeScalaStyleCheck
+    type: boolean
+    default: false
+  - name: IncludeScalaFmtCheck
+    type: boolean
+    default: false
+  - name: JobName
+    type: string
+    default: SynapseSparkJobBuild
+  - name: JobDisplayName
+    type: string
+    default: 'Synapse Spark job build'
+  # If it exists in the Sbt project path, the specified file will be used to extract the listed JAR files with maven to include in the build artifacts
+  - name: MavenPackageFileName
+    type: string
+    default: MavenPackagesForSparkJob.txt
+  - name: RunPublishTasks
+    type: boolean
+    default: true
+  - name: RunTestTasks
+    type: boolean
+    default: true
+  # Full path to the folder containing build.sbt
+  - name: SbtProjectPath
+    type: string
+  - name: SynapsePath
+    type: string
+    default: ''
+  - name: SynapseFilePrefixToPublish
+    type: string
+    default: ''
+  - name: ConfTemplateFile
+    type: string
+    default: ''
+  - name: ExpectedFileListFile
+    type: string
+    default: ''
+  - name: ErrorOnFileMismatch
+    type: boolean
+    default: false
+  - name: 'image'
+    displayName: 'Parameter passed from original yaml file'
+    type: string
+    default: ''
+
+jobs:
+  - job: ${{ parameters.JobName }}
+    displayName: ${{ parameters.JobDisplayName }}
+    steps:
+      #
+      # List workspace files
+      #
+ #     - template: /Common/AzurePipelines/Templates/ListPipelineWorkspaceFiles.steps.template.yaml
+
+      #
+      # Build Scala sbt project
+      #
+  #    - template: Build-SynapseSparkJobCode-steps.template.yaml
+   #     parameters:
+   #       BuildType: ${{ parameters.BuildType }}
+   #       IncludeCodeCoverage: ${{ parameters.IncludeCodeCoverage }}
+   #       IncludeScalaStyleCheck: ${{ parameters.IncludeScalaStyleCheck }}
+   #       IncludeScalaFmtCheck: ${{ parameters.IncludeScalaFmtCheck }}
+   #       MavenPackageFileName: ${{ parameters.MavenPackageFileName }}
+   #       RunPublishTasks: ${{ parameters.RunPublishTasks }}
+   #       RunTestTasks: ${{ parameters.RunTestTasks }}
+   #       SbtProjectPath: ${{ parameters.SbtProjectPath }}
+
+      #
+      # Build release files
+      #
+      - template: Build-SynapseSparkJobRelease-steps.template.yaml
+        parameters:
+          BuildType: ${{ parameters.BuildType }}
+          image: ${{ parameters.image }}
+          ConfTemplateFile: ${{ parameters.ConfTemplateFile }}
+          SynapsePath: ${{ parameters.SynapsePath }}
+          SynapseFilePrefixToPublish: ${{ parameters.SynapseFilePrefixToPublish }}
+
+      - task: PublishPipelineArtifact@1
+        displayName: 'Publish artifact ${{ parameters.ArtifactName }}'
+        condition: and(succeeded(), ${{ parameters.RunPublishTasks }})
+        inputs:
+          artifactName: ${{ parameters.ArtifactName }}
+          targetPath: $(Build.StagingDirectory)
+
+ # - ${{ if gt(length(parameters.ExpectedFileListFile), 0) }}:
+ #     - template: /Common/AzurePipelines/Templates/ValidateExpectedFileList-job.template.yaml
+ #       parameters:
+ #         ArtifactName: ${{ parameters.ArtifactName }}
+ #         BuildType: ${{ parameters.BuildType }}
+ #         DependsOn:
+ #           - ${{ parameters.JobName}}
+ #         ErrorOnFileMismatch: ${{ parameters.ErrorOnFileMismatch }}
+ #         ExpectedFileListFile: ${{ parameters.ExpectedFileListFile }}

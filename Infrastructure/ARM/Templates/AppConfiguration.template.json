@@ -1,0 +1,137 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "2022.3.4.1",
+    "parameters": {
+        "AppConfiguration_Name": {
+            "type": "string",
+            "minLength": 3
+        },
+        "AppConfiguration_PublicNetworkAccess": {
+            "type": "string",
+            "defaultValue": "Enabled",
+            "allowedValues": [
+                "Enabled",
+                "Disabled"
+            ]
+        },
+        "AppConfiguration_SkuName": {
+            "type": "string",
+            "defaultValue": "Standard",
+            "allowedValues": [
+                "Standard"
+            ]
+        },
+        "KeyVault_Name": {
+            "maxLength": 24,
+            "metadata": {
+                "description": "Name of the key vault to store the App Config connection string"
+            },
+            "minLength": 3,
+            "type": "String"
+        },
+        "KeyVault_ResourceGroupName": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().name]"
+        },
+        "Location": {
+            "type": "string"
+        },
+        "LogAnalyticsWorkspace_Name": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "LogAnalyticsWorkspace_ResourceGroupName": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().name]"
+        }
+    },
+    "resources": [
+        {
+            "type": "Microsoft.AppConfiguration/configurationStores",
+            "apiVersion": "2021-03-01-preview",
+            "name": "[parameters('AppConfiguration_Name')]",
+            "location": "[parameters('Location')]",
+            "sku": {
+                "name": "[parameters('AppConfiguration_SkuName')]"
+            },
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "properties": {
+                "disableLocalAuth": false,
+                "publicNetworkAccess": "[parameters('AppConfiguration_PublicNetworkAccess')]"
+            },
+            "resources": [
+                {
+                    "type": "providers/diagnosticsettings",
+                    "name": "Microsoft.Insights/Send to Log Analytics",
+                    "apiVersion": "2017-05-01-preview",
+                    "location": "[parameters('Location')]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.AppConfiguration/configurationStores', parameters('AppConfiguration_Name'))]"
+                    ],
+                    "properties": {
+                        "workspaceId": "[resourceId(parameters('LogAnalyticsWorkspace_ResourceGroupName'), 'Microsoft.OperationalInsights/workspaces', parameters('LogAnalyticsWorkspace_Name'))]",
+                        "logs": [
+                            {
+                                "category": "Audit",
+                                "enabled": true
+                            },
+                            {
+                                "category": "HttpRequest",
+                                "enabled": true
+                            }
+                        ],
+                        "metrics": [
+                            {
+                                "category": "AllMetrics",
+                                "enabled": true
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2019-10-01",
+            "name": "[take(concat('KeyVaultSecrets-', deployment().name), 64)]",
+            "resourceGroup": "[parameters('KeyVault_ResourceGroupName')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.AppConfiguration/configurationStores', parameters('AppConfiguration_Name'))]"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                    "contentVersion": "2020.12.13.1",
+                    "resources": [
+                        {
+                            "type": "Microsoft.KeyVault/vaults/secrets",
+                            "name": "[concat(parameters('KeyVault_Name'), '/AppConfigReadOnlyConnectionString')]",
+                            "apiVersion": "2019-09-01",
+                            "properties": {
+                                "value": "[listKeys(resourceId('Microsoft.AppConfiguration/configurationStores', parameters('AppConfiguration_Name')), '2020-06-01').value[3].connectionString]",
+                                "contentType": "App Config read-only connection string - Set automatically by ARM template deployment"
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "AppConfiguration_Endpoint": {
+            "type": "string",
+            "value": "[reference(resourceId('Microsoft.AppConfiguration/configurationStores', parameters('AppConfiguration_Name'))).endpoint]"
+        },
+        "AppConfiguration_Name": {
+            "type": "string",
+            "value": "[parameters('AppConfiguration_Name')]"
+        },
+        "AppConfiguration_Reference": {
+            "type": "object",
+            "value": "[reference(resourceId('Microsoft.AppConfiguration/configurationStores', parameters('AppConfiguration_Name')))]"
+        }
+    }
+}

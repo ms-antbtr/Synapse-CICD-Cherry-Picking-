@@ -1,0 +1,22 @@
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - Common/PowerShell/Modules/* # Also trigger a build if the UtilFunctions module is updated
+      - Infrastructure/Synapse/* # Trigger a build on a change to any file in the Synapse path
+    exclude:
+      - Infrastructure/Synapse/Pipelines/Release-* # No need to run a new build for release changes
+      - Infrastructure/Synapse/Pipelines/Templates/Release-* # No need to run a new build for release changes
+
+pool:
+  vmImage: windows-2022
+
+stages:
+  - stage: Build
+    condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+    jobs:
+      - template: Templates/Build-SynapseWorkspace-job.template.yaml
+        parameters:
+          BuildType: main

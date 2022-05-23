@@ -1,0 +1,73 @@
+parameters:
+  - name: ArtifactFolderName
+    type: string
+    default: Bin
+  - name: BuildType
+    type: string
+    values: [CI, PR, main]
+  - name: IncludeCodeCoverage
+    type: boolean
+    default: true
+  - name: IncludeScalaStyleCheck
+    type: boolean
+    default: false
+  - name: IncludeScalaFmtCheck
+    type: boolean
+    default: false
+  # If it exists in the Sbt project path, the specified file will be used to extract the listed JAR files with maven to include in the build artifacts
+  - name: MavenPackageFileName
+    type: string
+    default: MavenPackagesForSparkJob.txt
+  - name: RunPublishTasks
+    type: boolean
+    default: true
+  - name: RunTestTasks
+    type: boolean
+    default: true
+  # Full path to the folder containing build.sbt
+  - name: SbtProjectPath
+    type: string
+
+steps:
+  # Run sbt tasks
+#  - template: /Common/AzurePipelines/Templates/ScalaSbt-build-task-template.yaml
+#    parameters:
+#      BuildType: ${{ parameters.BuildType }}
+#      IncludeCodeCoverage: ${{ parameters.IncludeCodeCoverage }}
+#      IncludeScalaFmtCheck: ${{ parameters.IncludeScalaFmtCheck }}
+#      IncludeScalaStyleCheck: ${{ parameters.IncludeScalaStyleCheck }}
+#      RunTestTasks: ${{ parameters.RunTestTasks }}
+#      SbtProjectPath: ${{ parameters.SbtProjectPath }}
+
+#  - task: CmdLine@2
+#    displayName: 'List JAR files (cmd)'
+#    inputs:
+#      script: 'dir /b /s *.jar'
+#      workingDirectory: ${{ parameters.SbtProjectPath }}
+
+ # - ${{ if parameters.RunPublishTasks }}:
+ #     - task: CopyFiles@2
+ #       displayName: 'Copy: lib and target JAR files to artifact staging'
+ #       inputs:
+ #         sourceFolder: ${{ parameters.SbtProjectPath }}
+ #         targetFolder: $(Build.StagingDirectory)/${{ parameters.ArtifactFolderName }}
+ #         contents: |
+#           lib/**/*.jar
+ #           target/**/*.jar
+
+  #    - ${{ if gt(length(parameters.MavenPackageFileName), 0) }}:
+   #       - task: PowerShell@2
+    #        displayName: 'Get dependency JARs with maven (pwsh)'
+     #       inputs:
+  #            errorActionPreference: stop
+  #            pwsh: true
+  #            targetType: inline
+  #            script: |
+   #             $MavenPackageFile = '${{ parameters.SbtProjectPath }}\${{ parameters.MavenPackageFileName }}'
+
+   #             if (-not (Test-Path -Path $MavenPackageFile)) {
+   #                 Write-Warning "Specified Maven package file '${{ parameters.MavenPackageFileName }}' not found"
+   #             } else {
+   #                 $PackageList = Get-Content -Path $MavenPackageFile
+   #                 $PackageList | ForEach-Object { mvn dependency:copy -Dartifact="$_" -DoutputDirectory='$(Build.StagingDirectory)/${{ parameters.ArtifactFolderName }}/packages' }
+   #             }

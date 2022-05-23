@@ -1,0 +1,198 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "2022.3.30.1",
+    "parameters": {
+        "AppConfiguration_Name": {
+            "type": "string",
+            "minLength": 3
+        },
+        "AppConfiguration_RbacRoleAssignments": {
+            "type": "array",
+            "defaultValue": [],
+            "metadata": {
+                "sampleValue": [
+                    {
+                        "Name": "(optional)",
+                        "PrincipalId": "<guid>",
+                        "RoleDefinitionName": "<enum>"
+                    }
+                ]
+            }
+        },
+        "AppConfiguration_SetRbacRoles": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "CosmosDb_PrimaryAccount_Name": {
+            "type": "string"
+        },
+        "CosmosDb_PrimaryAccount_ResourceGroupName": {
+            "type": "string"
+        },
+        "CosmosDb_RbacRoleAssignments": {
+            "type": "array",
+            "defaultValue": []
+        },
+        "CosmosDb_SetRbacRoles": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "DataLakeStorageAccount_Name": {
+            "type": "string"
+        },
+        "DataLakeStorageAccount_RbacRoleAssignments": {
+            "type": "array",
+            "defaultValue": [],
+            "metadata": {
+                "sampleValue": [
+                    {
+                        "Name": "",
+                        "PrincipalId": "<guid>",
+                        "RoleDefinitionName": "<enum>"
+                    }
+                ]
+            }
+        },
+        "DataLakeStorageAccount_SetRbacRoles": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "ObjectId_DeploymentPrincipal": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "SynapseWorkspace_DefaultDataLakeStorage_AccountName": {
+            "type": "String"
+        },
+        "SynapseWorkspace_Name": {
+            "type": "String",
+            "defaultValue": ""
+        },
+        "SynapseWorkspace_UserAssignedIdentity_Name": {
+            "type": "string",
+            "defaultValue": ""
+        }
+    },
+    "variables": {
+        "AppConfiguration_ResourceId": "[resourceId('Microsoft.AppConfiguration/configurationStores', parameters('AppConfiguration_Name'))]",
+        "CosmosDb_ResourceId": "[resourceId(parameters('CosmosDb_PrimaryAccount_ResourceGroupName'), 'Microsoft.DocumentDB/databaseAccounts', toLower(parameters('CosmosDb_PrimaryAccount_Name')))]",
+        "DataLakeStorageAccount_ResourceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('DataLakeStorageAccount_Name'))]",
+        "RoleAssignment_ApiVersion": "2018-01-01-preview",
+        "RoleDefinitions": {
+            "App Configuration Data Owner": "5ae67dd6-50cb-40e7-96ff-dc2bfa4b606b",
+            "App Configuration Data Reader": "516239f1-63e1-4d78-a4de-a74fb236a071",
+            "Contributor": "b24988ac-6180-42a0-ab88-20f7382dd24c",
+            "Cosmos DB Account Reader Role": "fbdf93bf-df7d-467e-a4d2-9458aa1360c8",
+            "DocumentDB Account Contributor": "5bd9cd88-fe45-4216-938b-f97437e15450",
+            "Monitoring Reader": "43d0d8ad-25c7-4714-9337-8ba259a9fe05",
+            "Reader": "acdd72a7-3385-48ef-bd42-f606fba81ae7",
+            "Storage Blob Data Contributor": "ba92f5b4-2d11-453d-a403-e96b0029c9fe",
+            "Storage Blob Data Reader": "2a2b9908-6ea1-4ae2-8e65-a410df84e7d1"
+        },
+        "SynapseWorkspace_ApiVersion": "2019-06-01-preview",
+        "SynapseWorkspace_DefaultDataLakeStorage_ResourceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('SynapseWorkspace_DefaultDataLakeStorage_AccountName'))]",
+        "UserAssignedIdentities_ApiVersion": "2018-11-30"
+    },
+    "resources": [
+        {
+            "copy": {
+                "name": "AppConfigurationRbacRoleAssignments",
+                "count": "[length(parameters('AppConfiguration_RbacRoleAssignments'))]"
+            },
+            "condition": "[and(parameters('AppConfiguration_SetRbacRoles'), not(empty(parameters('AppConfiguration_RbacRoleAssignments'))))]",
+            "type": "Microsoft.Authorization/roleAssignments",
+            "apiVersion": "[variables('RoleAssignment_ApiVersion')]",
+            "name": "[guid(variables('AppConfiguration_ResourceId'), parameters('AppConfiguration_RbacRoleAssignments')[copyIndex()].PrincipalId, parameters('AppConfiguration_RbacRoleAssignments')[copyIndex()].RoleDefinitionName)]",
+            "scope": "[variables('AppConfiguration_ResourceId')]",
+            "properties": {
+                "roleDefinitionId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', variables('RoleDefinitions')[parameters('AppConfiguration_RbacRoleAssignments')[copyIndex()].RoleDefinitionName])]",
+                "principalId": "[parameters('AppConfiguration_RbacRoleAssignments')[copyIndex()].PrincipalId]"
+            }
+        },
+        {
+            "copy": {
+                "name": "CosmosDbRbacRoleAssignments",
+                "count": "[length(parameters('CosmosDb_RbacRoleAssignments'))]"
+            },
+            "condition": "[and(parameters('CosmosDb_SetRbacRoles'), not(empty(parameters('CosmosDb_RbacRoleAssignments'))))]",
+            "type": "Microsoft.Authorization/roleAssignments",
+            "apiVersion": "[variables('RoleAssignment_ApiVersion')]",
+            "name": "[guid(variables('CosmosDb_ResourceId'), parameters('CosmosDb_RbacRoleAssignments')[copyIndex()].PrincipalId, parameters('CosmosDb_RbacRoleAssignments')[copyIndex()].RoleDefinitionName)]",
+            "scope": "[variables('CosmosDb_ResourceId')]",
+            "properties": {
+                "roleDefinitionId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', variables('RoleDefinitions')[parameters('CosmosDb_RbacRoleAssignments')[copyIndex()].RoleDefinitionName])]",
+                "principalId": "[parameters('CosmosDb_RbacRoleAssignments')[copyIndex()].PrincipalId]"
+            }
+        },
+        {
+            "copy": {
+                "name": "DataLakeStorageAccountRbacRoleAssignments",
+                "count": "[length(parameters('DataLakeStorageAccount_RbacRoleAssignments'))]"
+            },
+            "condition": "[and(parameters('DataLakeStorageAccount_SetRbacRoles'), not(empty(parameters('DataLakeStorageAccount_RbacRoleAssignments'))))]",
+            "type": "Microsoft.Authorization/roleAssignments",
+            "apiVersion": "[variables('RoleAssignment_ApiVersion')]",
+            "name": "[guid(variables('DataLakeStorageAccount_ResourceId'), parameters('DataLakeStorageAccount_RbacRoleAssignments')[copyIndex()].PrincipalId, parameters('DataLakeStorageAccount_RbacRoleAssignments')[copyIndex()].RoleDefinitionName)]",
+            "scope": "[variables('DataLakeStorageAccount_ResourceId')]",
+            "properties": {
+                "roleDefinitionId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', variables('RoleDefinitions')[parameters('DataLakeStorageAccount_RbacRoleAssignments')[copyIndex()].RoleDefinitionName])]",
+                "principalId": "[parameters('DataLakeStorageAccount_RbacRoleAssignments')[copyIndex()].PrincipalId]"
+            }
+        },
+        {
+            "condition": "[and(parameters('DataLakeStorageAccount_SetRbacRoles'), not(empty(parameters('DataLakeStorageAccount_Name'))), not(empty(parameters('SynapseWorkspace_Name'))))]",
+            "type": "Microsoft.Authorization/roleAssignments",
+            "apiVersion": "[variables('RoleAssignment_ApiVersion')]",
+            "name": "[guid(variables('DataLakeStorageAccount_ResourceId'), parameters('SynapseWorkspace_Name'), 'Storage Blob Data Contributor')]",
+            "scope": "[variables('DataLakeStorageAccount_ResourceId')]",
+            "properties": {
+                "roleDefinitionId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', variables('RoleDefinitions')['Storage Blob Data Contributor'])]",
+                "principalId": "[reference(resourceId('Microsoft.Synapse/workspaces', parameters('SynapseWorkspace_Name')), variables('SynapseWorkspace_ApiVersion'), 'Full').identity.principalId]"
+            }
+        },
+        {
+            "condition": "[and(parameters('DataLakeStorageAccount_SetRbacRoles'), not(empty(parameters('DataLakeStorageAccount_Name'))), not(empty(parameters('SynapseWorkspace_UserAssignedIdentity_Name'))))]",
+            "type": "Microsoft.Authorization/roleAssignments",
+            "apiVersion": "[variables('RoleAssignment_ApiVersion')]",
+            "name": "[guid(variables('DataLakeStorageAccount_ResourceId'), parameters('SynapseWorkspace_UserAssignedIdentity_Name'), 'Storage Blob Data Contributor')]",
+            "scope": "[variables('DataLakeStorageAccount_ResourceId')]",
+            "properties": {
+                "roleDefinitionId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', variables('RoleDefinitions')['Storage Blob Data Contributor'])]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('SynapseWorkspace_UserAssignedIdentity_Name')), variables('UserAssignedIdentities_ApiVersion')).principalId]"
+            }
+        },
+        {
+            "condition": "[and(parameters('DataLakeStorageAccount_SetRbacRoles'), not(empty(parameters('SynapseWorkspace_DefaultDataLakeStorage_AccountName'))), not(empty(parameters('ObjectId_DeploymentPrincipal'))))]",
+            "type": "Microsoft.Authorization/roleAssignments",
+            "apiVersion": "[variables('RoleAssignment_ApiVersion')]",
+            "name": "[guid(variables('SynapseWorkspace_DefaultDataLakeStorage_ResourceId'), parameters('ObjectId_DeploymentPrincipal'), 'Storage Blob Data Contributor')]",
+            "scope": "[variables('SynapseWorkspace_DefaultDataLakeStorage_ResourceId')]",
+            "properties": {
+                "roleDefinitionId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', variables('RoleDefinitions')['Storage Blob Data Contributor'])]",
+                "principalId": "[parameters('ObjectId_DeploymentPrincipal')]"
+            }
+        },
+        {
+            "condition": "[and(parameters('DataLakeStorageAccount_SetRbacRoles'), not(empty(parameters('SynapseWorkspace_DefaultDataLakeStorage_AccountName'))), not(empty(parameters('SynapseWorkspace_Name'))))]",
+            "type": "Microsoft.Authorization/roleAssignments",
+            "apiVersion": "[variables('RoleAssignment_ApiVersion')]",
+            "name": "[guid(variables('SynapseWorkspace_DefaultDataLakeStorage_ResourceId'), parameters('SynapseWorkspace_Name'), 'Storage Blob Data Contributor')]",
+            "scope": "[variables('SynapseWorkspace_DefaultDataLakeStorage_ResourceId')]",
+            "properties": {
+                "roleDefinitionId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', variables('RoleDefinitions')['Storage Blob Data Contributor'])]",
+                "principalId": "[reference(resourceId('Microsoft.Synapse/workspaces', parameters('SynapseWorkspace_Name')), variables('SynapseWorkspace_ApiVersion'), 'Full').identity.principalId]"
+            }
+        },
+        {
+            "condition": "[and(parameters('DataLakeStorageAccount_SetRbacRoles'), not(empty(parameters('SynapseWorkspace_DefaultDataLakeStorage_AccountName'))), not(empty(parameters('SynapseWorkspace_UserAssignedIdentity_Name'))))]",
+            "type": "Microsoft.Authorization/roleAssignments",
+            "apiVersion": "[variables('RoleAssignment_ApiVersion')]",
+            "name": "[guid(variables('SynapseWorkspace_DefaultDataLakeStorage_ResourceId'), parameters('SynapseWorkspace_UserAssignedIdentity_Name'), 'Storage Blob Data Contributor')]",
+            "scope": "[variables('SynapseWorkspace_DefaultDataLakeStorage_ResourceId')]",
+            "properties": {
+                "roleDefinitionId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', variables('RoleDefinitions')['Storage Blob Data Contributor'])]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('SynapseWorkspace_UserAssignedIdentity_Name')), variables('UserAssignedIdentities_ApiVersion')).principalId]"
+            }
+        }
+    ]
+}

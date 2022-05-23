@@ -1,0 +1,321 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "2022.4.1.1",
+    "parameters": {
+        "ApplicationInsights_Name": {
+            "metadata": {
+                "description": "Application Insights workspace used for Azure Function instrumentation"
+            },
+            "type": "string"
+        },
+        "CreateDeleteLocks": {
+            "defaultValue": false,
+            "type": "bool"
+        },
+        "Diagnostics_LogAnalyticsWorkspace_Name": {
+            "metadata": {
+                "description": "Log Analytics workspace used for diagnostic data"
+            },
+            "type": "string",
+            "defaultValue": ""
+        },
+        "EventGrid_TopicName": {
+            "type": "String"
+        },
+        "FunctionApp_ManagedIdentity_Name": {
+            "type": "String"
+        },
+        "FunctionApp_Name": {
+            "type": "String"
+        },
+        "FunctionApp_ServicePlan_Name": {
+            "type": "String"
+        },
+        "FunctionApp_ServicePlan_SkuName": {
+            "type": "String",
+            "defaultValue": "Y1"
+        },
+        "KeyVault_Name": {
+            "maxLength": 24,
+            "minLength": 3,
+            "type": "string"
+        },
+        "KeyVault_ResourceGroupName": {
+            "defaultValue": "[resourceGroup().name]",
+            "type": "string"
+        },
+        "Location": {
+            "type": "string"
+        },
+        "StorageAccount_Name": {
+            "type": "string"
+        }
+    },
+    "variables": {
+        "Diagnostics_LogAnalyticsWorkspace_ResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('Diagnostics_LogAnalyticsWorkspace_Name'))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+            "apiVersion": "2018-11-30",
+            "location": "[parameters('Location')]",
+            "name": "[parameters('FunctionApp_ManagedIdentity_Name')]",
+            "resources": [
+                {
+                    "apiVersion": "2016-09-01",
+                    "condition": "[parameters('CreateDeleteLocks')]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('FunctionApp_ManagedIdentity_Name'))]"
+                    ],
+                    "name": "Microsoft.Authorization/Do Not Delete",
+                    "properties": {
+                        "level": "CanNotDelete"
+                    },
+                    "type": "providers/locks"
+                }
+            ]
+        },
+        {
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2018-11-01",
+            "name": "[parameters('FunctionApp_Name')]",
+            "location": "[parameters('Location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', parameters('FunctionApp_ServicePlan_Name'))]",
+                "[resourceID('Microsoft.ManagedIdentity/userAssignedIdentities/', parameters('FunctionApp_ManagedIdentity_Name'))]"
+            ],
+            "kind": "functionapp",
+            "identity": {
+                "type": "SystemAssigned,UserAssigned",
+                "userAssignedIdentities": {
+                    "[resourceID('Microsoft.ManagedIdentity/userAssignedIdentities/', parameters('FunctionApp_ManagedIdentity_Name'))]": {}
+                }
+            },
+            "properties": {
+                "enabled": true,
+                "serverFarmId": "[parameters('FunctionApp_ServicePlan_Name')]",
+                "httpsOnly": true,
+                "siteConfig": {
+                    "appSettings": [
+                        {
+                            "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+                            "value": "[reference(resourceId(resourceGroup().name, 'microsoft.insights/components', parameters('ApplicationInsights_Name')), '2015-05-01', 'Full').properties.InstrumentationKey]"
+                        },
+                        {
+                            "name": "AZURE_FUNCTIONS_ENVIRONMENT",
+                            "value": "Development"
+                        },
+                        {
+                            "name": "AzureWebJobsStorage",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', parameters('StorageAccount_Name'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('StorageAccount_Name')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value)]"
+                        },
+                        {
+                            "name": "FUNCTIONS_EXTENSION_VERSION",
+                            "value": "~3"
+                        },
+                        {
+                            "name": "FUNCTIONS_WORKER_RUNTIME",
+                            "value": "dotnet"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', parameters('StorageAccount_Name'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('StorageAccount_Name')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value)]"
+                        },
+                        {
+                            "name": "WEBSITE_TIME_ZONE",
+                            "value": "Pacific Standard Time"
+                        }
+                    ],
+                    "detailedErrorLoggingEnabled": false,
+                    "httpLoggingEnabled": false,
+                    "localMySqlEnabled": false,
+                    "logsDirectorySizeLimit": 35,
+                    "minTlsVersion": "1.2",
+                    "remoteDebuggingEnabled": false,
+                    "requestTracingEnabled": false
+                }
+            },
+            "resources": [
+                {
+                    "apiVersion": "2015-08-01",
+                    "name": "appsettings",
+                    "type": "config",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/Sites', parameters('FunctionApp_Name'))]",
+                        "[resourceId('Microsoft.Resources/deployments', 'FunctionApp_ManagedIdentity-KeyVaultAccessPolicy')]"
+                    ],
+                    "properties": {
+                        "AppConfigConnectionString": "[concat('@Microsoft.KeyVault(VaultName=', parameters('KeyVault_Name'), ';SecretName=AppConfigConnectionStringReadOnly)')]",
+                        "APPINSIGHTS_INSTRUMENTATIONKEY": "[reference(resourceId(resourceGroup().name, 'microsoft.insights/components', parameters('ApplicationInsights_Name')), '2015-05-01', 'Full').properties.InstrumentationKey]",
+                        "AZURE_FUNCTIONS_ENVIRONMENT": "Development",
+                        "AzureWebJobsStorage": "[concat('DefaultEndpointsProtocol=https;AccountName=', parameters('StorageAccount_Name'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('StorageAccount_Name')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value)]",
+                        "EventGridTopicKey": "[concat('@Microsoft.KeyVault(VaultName=', parameters('KeyVault_Name'), ';SecretName=EventGridTopicKey)')]",
+                        "EventGridTopicUri": "[reference(resourceId('Microsoft.EventGrid/topics', parameters('EventGrid_TopicName')), '2021-12-01').endpoint]",
+                        "FUNCTIONS_EXTENSION_VERSION": "~3",
+                        "FUNCTIONS_WORKER_RUNTIME": "dotnet",
+                        "LogAnalyticsWorkspaceId": "[concat('@Microsoft.KeyVault(VaultName=', parameters('KeyVault_Name'), ';SecretName=LogAnalyticsWorkspaceId)')]",
+                        "LogAnalyticsWorkspaceKey": "[concat('@Microsoft.KeyVault(VaultName=', parameters('KeyVault_Name'), ';SecretName=LogAnalyticsWorkspaceKey)')]",
+                        "ManagedIdentityClientId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('FunctionApp_ManagedIdentity_Name')), '2018-11-30', 'full').properties.clientId]",
+                        "SqlPassword": "[concat('@Microsoft.KeyVault(VaultName=', parameters('KeyVault_Name'), ';SecretName=SqlPassword)')]",
+                        "SqlUserName": "[concat('@Microsoft.KeyVault(VaultName=', parameters('KeyVault_Name'), ';SecretName=SqlUserName)')]",
+                        "StorageAccountName": "[parameters('StorageAccount_Name')]",
+                        "StorageAuthType": "ManagedIdentity",
+                        "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING": "[concat('DefaultEndpointsProtocol=https;AccountName=', parameters('StorageAccount_Name'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('StorageAccount_Name')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value)]",
+                        "WEBSITE_TIME_ZONE": "Pacific Standard Time"
+                    }
+                },
+                {
+                    "type": "providers/diagnosticsettings",
+                    "name": "Microsoft.Insights/Send to Log Analytics",
+                    "apiVersion": "2017-05-01-preview",
+                    "location": "[parameters('Location')]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/sites', parameters('FunctionApp_Name'))]"
+                    ],
+                    "condition": "[not(empty(parameters('Diagnostics_LogAnalyticsWorkspace_Name')))]",
+                    "properties": {
+                        "workspaceId": "[variables('Diagnostics_LogAnalyticsWorkspace_ResourceId')]",
+                        "logs": [
+                            {
+                                "category": "FunctionAppLogs",
+                                "enabled": true
+                            }
+                        ],
+                        "metrics": [
+                            {
+                                "category": "AllMetrics",
+                                "enabled": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "type": "config",
+                    "apiVersion": "2018-11-01",
+                    "name": "web",
+                    "location": "[parameters('Location')]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/sites', parameters('FunctionApp_Name'))]"
+                    ],
+                    "properties": {
+                        "ipSecurityRestrictions": [
+                            {
+                                "ipAddress": "AzureEventGrid",
+                                "action": "Allow",
+                                "tag": "ServiceTag",
+                                "priority": 100,
+                                "name": "Allow inbound Event Grid"
+                            }
+                        ],
+                        "scmIpSecurityRestrictions": [
+                            {
+                                "ipAddress": "Any",
+                                "action": "Allow",
+                                "priority": 1,
+                                "name": "Allow all",
+                                "description": "Allow all access"
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "type": "Microsoft.Web/serverfarms",
+            "apiVersion": "2018-02-01",
+            "name": "[parameters('FunctionApp_ServicePlan_Name')]",
+            "location": "[parameters('Location')]",
+            "sku": {
+                "name": "[parameters('FunctionApp_ServicePlan_SkuName')]"
+            },
+            "kind": "functionapp",
+            "properties": {},
+            "resources": [
+                {
+                    "type": "providers/diagnosticsettings",
+                    "name": "Microsoft.Insights/Send to Log Analytics",
+                    "apiVersion": "2017-05-01-preview",
+                    "location": "[parameters('Location')]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/serverfarms', parameters('FunctionApp_ServicePlan_Name'))]"
+                    ],
+                    "condition": "[not(empty(parameters('Diagnostics_LogAnalyticsWorkspace_Name')))]",
+                    "properties": {
+                        "workspaceId": "[variables('Diagnostics_LogAnalyticsWorkspace_ResourceId')]",
+                        "metrics": [
+                            {
+                                "category": "AllMetrics",
+                                "enabled": true
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "FunctionApp_ManagedIdentity-KeyVaultAccessPolicy",
+            "resourceGroup": "[parameters('KeyVault_ResourceGroupName')]",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2019-09-01",
+            "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('FunctionApp_ManagedIdentity_Name'))]",
+                "[resourceId('Microsoft.Web/Sites', parameters('FunctionApp_Name'))]"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                    "contentVersion": "2021.03.08.1",
+                    "resources": [
+                        {
+
+                            "name": "[concat(parameters('KeyVault_Name'), '/add')]",
+                            "type": "Microsoft.KeyVault/vaults/accessPolicies",
+                            "apiVersion": "2019-09-01",
+                            "properties": {
+                                "accessPolicies": [
+                                    {
+                                        "tenantId": "[subscription().tenantId]",
+                                        "objectId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('FunctionApp_ManagedIdentity_Name')), '2018-11-30', 'full').properties.principalId]",
+                                        "permissions": {
+                                            "secrets": [ "list", "get" ]
+                                        }
+                                    },
+                                    {
+                                        "tenantId": "[subscription().tenantId]",
+                                        "objectId": "[reference(resourceId('Microsoft.Web/sites/',  parameters('FunctionApp_Name')), '2019-08-01', 'full').identity.principalId]",
+                                        "permissions": {
+                                            "secrets": [ "get" ]
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "FunctionApp_ApiUri": {
+            "type": "string",
+            "value": "[concat('https://', reference(parameters('FunctionApp_Name'), '2018-11-01')['hostNames'][0], '/api')]"
+        },
+        "FunctionApp_ManagedIdentity_ClientId": {
+            "type": "string",
+            "value": "[reference(parameters('FunctionApp_ManagedIdentity_Name'), '2018-11-30').clientId]"
+        },
+        "FunctionApp_ManagedIdentity_Name": {
+            "type": "string",
+            "value": "[parameters('FunctionApp_ManagedIdentity_Name')]"
+        },
+        "FunctionApp_ManagedIdentity_PrincipalId": {
+            "type": "string",
+            "value": "[reference(parameters('FunctionApp_ManagedIdentity_Name'), '2018-11-30').principalId]"
+        },
+        "FunctionApp_Name": {
+            "type": "string",
+            "value": "[parameters('FunctionApp_Name')]"
+        }
+    }
+}

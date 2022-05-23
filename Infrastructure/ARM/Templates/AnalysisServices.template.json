@@ -1,0 +1,154 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "2022.4.1.1",
+    "parameters": {
+        "AnalysisServices_Administrators": {
+            "type": "array",
+            "defaultValue": []
+        },
+        "AnalysisServices_BackupStorageAccountName": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "AnalysisServices_BackupStorageContainerName": {
+            "type": "string",
+            "defaultValue": "analysisservicesbackup"
+        },
+        "AnalysisServices_IpV4FirewallSettings_EnablePowerBIService": {
+            "type": "bool",
+            "defaultValue": true
+        },
+        "AnalysisServices_IpV4FirewallSettings_FirewallRules": {
+            "type": "array",
+            "defaultValue": [],
+            "metadata": {
+                "sampleValue": [
+                    {
+                        "firewallRuleName": "Redmond",
+                        "rangeStart": "131.107.132.16",
+                        "rangeEnd": "131.107.132.16"
+                    }
+                ]
+            }
+        },
+        "AnalysisServices_ReplicaCount": {
+            "type": "int",
+            "defaultValue": 1,
+            "metadata": {
+                "description": "The total number of query replica scale-out instances. Scale-out of more than one instance is supported on selected regions only."
+            }
+        },
+        "AnalysisServices_ServerName": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 128,
+            "metadata": {
+                "description": "The name of the Azure Analysis Services server to create. Server name must begin with a letter, be lowercase alphanumeric, and between 3 and 63 characters in length. Server name must be unique per region."
+            }
+        },
+        "AnalysisServices_SkuName": {
+            "type": "string",
+            "defaultValue": "S0",
+            "allowedValues": [
+                "D1",
+                "B1",
+                "B2",
+                "S0",
+                "S1",
+                "S2",
+                "S4",
+                "S8",
+                "S9",
+                "S8v2",
+                "S9v2"
+            ],
+            "metadata": {
+                "description": "The sku name of the Azure Analysis Services server to create"
+            }
+        },
+        "Location": {
+            "type": "string"
+        },
+        "LogAnalyticsWorkspace_Name": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "LogAnalyticsWorkspace_ResourceGroupName": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().name]"
+        }
+    },
+    "variables": {
+        "AnalysisServices_ResourceId": "[resourceId('Microsoft.AnalysisServices/servers', parameters('AnalysisServices_ServerName'))]",
+        "LogAnalyticsWorkspace_ResourceId": "[resourceId(parameters('LogAnalyticsWorkspace_ResourceGroupName'), 'Microsoft.OperationalInsights/workspaces', parameters('LogAnalyticsWorkspace_Name'))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.AnalysisServices/servers",
+            "apiVersion": "2017-08-01",
+            "name": "[parameters('AnalysisServices_ServerName')]",
+            "location": "[parameters('Location')]",
+            "sku": {
+                "name": "[parameters('AnalysisServices_SkuName')]",
+                "capacity": "[parameters('AnalysisServices_ReplicaCount')]"
+            },
+            "properties": {
+                "asAdministrators": {
+                    "members": "[parameters('AnalysisServices_Administrators')]"
+                },
+                "backupBlobContainerUri": "[if(and(not(empty(parameters('AnalysisServices_BackupStorageAccountName'))), not(empty(parameters('AnalysisServices_BackupStorageContainerName')))), concat('https://', parameters('AnalysisServices_BackupStorageAccountName'), '.blob.core.windows.net/', parameters('AnalysisServices_BackupStorageContainerName')), json('null'))]",
+                "ipV4FirewallSettings": {
+                    "enablePowerBIService": "[parameters('AnalysisServices_IpV4FirewallSettings_EnablePowerBIService')]",
+                    "firewallRules": "[parameters('AnalysisServices_IpV4FirewallSettings_FirewallRules')]"
+                },
+                "managedMode": 1,
+                "querypoolConnectionMode": "All",
+                "serverMonitorMode": 1
+            },
+            "resources": [
+                {
+                    "type": "providers/diagnosticsettings",
+                    "name": "Microsoft.Insights/Send to Log Analytics",
+                    "apiVersion": "2017-05-01-preview",
+                    "location": "[parameters('Location')]",
+                    "dependsOn": [
+                        "[variables('AnalysisServices_ResourceId')]"
+                    ],
+                    "properties": {
+                        "workspaceId": "[variables('LogAnalyticsWorkspace_ResourceId')]",
+                        "logs": [
+                            {
+                                "category": "Engine",
+                                "enabled": true
+                            },
+                            {
+                                "category": "Service",
+                                "enabled": true
+                            }
+                        ],
+                        "metrics": [
+                            {
+                                "category": "AllMetrics",
+                                "enabled": true
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    ],
+    "outputs": {
+        "AnalysisServices_Reference": {
+            "type": "object",
+            "value": "[reference(variables('AnalysisServices_ResourceId'))]"
+        },
+        "AnalysisServices_ResourceId": {
+            "type": "string",
+            "value": "[variables('AnalysisServices_ResourceId')]"
+        },
+        "AnalysisServices_ServerName": {
+            "type": "string",
+            "value": "[parameters('AnalysisServices_ServerName')]"
+        }
+    }
+}

@@ -1,0 +1,323 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "2022.4.1.1",
+    "parameters": {
+        "Location": {
+            "type": "string"
+        },
+        "LogAnalyticsWorkspace_Name": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "Log Analytics workspace used for diagnostic data"
+            }
+        },
+        "LogAnalyticsWorkspace_ResourceGroupName": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().name]",
+            "metadata": {
+                "description": "Log Analytics workspace used for diagnostic data"
+            }
+        },
+        "SecurityLogs_StorageAccount_Name": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "SqlServer_ADAdministratorLogin": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "SqlServer_ADAdministratorSID": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "SqlServer_Administrator_Password": {
+            "type": "securestring"
+        },
+        "SqlServer_Administrator_UserName": {
+            "type": "securestring"
+        },
+
+        "SqlServer_ConfigureDNSAliases": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "SqlServer_ConfigureSQLFirewallRules": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Whether to create or update the server firewall rules specified in the 'SQLFirewallRules' parameter. Default is 'false'."
+            }
+        },
+        "SqlServer_DNSAliases": {
+            "type": "array",
+            "defaultValue": []
+        },
+        "SqlServer_FirewallRules": {
+            "type": "array",
+            "defaultValue": [
+            ],
+            "metadata": {
+                "description": "Array of firewall rules to create. Each rule item must contain 'Name', 'StartIPAddress', and 'EndIPAddress values'"
+            }
+        },
+        "SqlServer_Name": {
+            "type": "string",
+            "metadata": {
+                "description": "Name of the SQL server resource"
+            }
+        },
+        "SqlServer_SetADAdministrator": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Whether to set the server's AD administrator. Default is 'false'"
+            }
+        },
+        "VirtualNetwork_AllowedNetworkNames": {
+            "type": "array",
+            "defaultValue": []
+        },
+        "VirtualNetwork_CreatePrivateEndpoints": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "VirtualNetwork_Name": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "The name of the virtual network configured with the cosmosDb account"
+            }
+        },
+        "VirtualNetwork_ResourceGroupName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "The name of the resource group in which the virtual network resides"
+            }
+        },
+        "VulnerabilityAssessment_StorageAccount_Name": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "VulnerabilityAssessment_StorageAccount_Path": {
+            "type": "string",
+            "defaultValue": "vulnerability-assessment"
+        }
+    },
+    "variables": {
+        "LogAnalyticsWorkspace_ResourceId": "[resourceId(parameters('LogAnalyticsWorkspace_ResourceGroupName'), 'Microsoft.OperationalInsights/workspaces', parameters('LogAnalyticsWorkspace_Name'))]",
+        "SqlServer_DiagnosticSettings_EnabledLogCategories": [
+            "AutomaticTuning",
+            "Blocks",
+            "DatabaseWaitStatistics",
+            "Deadlocks",
+            "Errors",
+            "QueryStoreRuntimeStatistics",
+            "QueryStoreWaitStatistics",
+            "SQLInsights",
+            "SQLSecurityAuditEvents",
+            "Timeouts"
+        ],
+        "SqlServer_ResourceId": "[resourceId('Microsoft.Sql/servers', parameters('SqlServer_Name'))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Sql/servers",
+            "name": "[parameters('SqlServer_Name')]",
+            "location": "[parameters('Location')]",
+            "kind": "v12.0",
+            "apiVersion": "2021-08-01-preview",
+            "properties": {
+                "administratorLogin": "[parameters('SqlServer_Administrator_UserName')]",
+                "administratorLoginPassword": "[parameters('SqlServer_Administrator_Password')]",
+                "minimalTlsVersion": "1.2",
+                "publicNetworkAccess": "Enabled",
+                "restrictOutboundNetworkAccess": "Disabled",
+                "version": "12.0"
+            },
+            "resources": [
+                {
+                    "condition": "[and(parameters('SqlServer_SetADAdministrator'), not(empty(parameters('SqlServer_ADAdministratorLogin'))), not(empty(parameters('SqlServer_ADAdministratorSID'))))]",
+                    "type": "administrators",
+                    "name": "ActiveDirectory",
+                    "location": "[parameters('Location')]",
+                    "apiVersion": "2014-04-01",
+                    "dependsOn": [
+                        "[variables('SqlServer_ResourceId')]"
+                    ],
+                    "properties": {
+                        "administratorType": "ActiveDirectory",
+                        "tenantId": "[subscription().tenantId]",
+                        "login": "[parameters('SqlServer_ADAdministratorLogin')]",
+                        "sid": "[parameters('SqlServer_ADAdministratorSID')]"
+                    }
+                },
+                {
+                    "type": "auditingSettings",
+                    "name": "DefaultAuditingSettings",
+                    "apiVersion": "2017-03-01-preview",
+                    "dependsOn": [
+                        "[variables('SqlServer_ResourceId')]"
+                    ],
+                    "properties": {
+                        "state": "Enabled",
+                        "storageEndpoint": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('SecurityLogs_StorageAccount_Name')), '2019-04-01').PrimaryEndpoints.Blob]",
+                        "storageAccountAccessKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('SecurityLogs_StorageAccount_Name')), '2019-04-01').keys[0].value]",
+                        "storageAccountSubscriptionId": "[subscription().subscriptionId]",
+                        "retentionDays": 90,
+                        "auditActionsAndGroups": [
+                            "SUCCESSFUL_DATABASE_AUTHENTICATION_GROUP",
+                            "FAILED_DATABASE_AUTHENTICATION_GROUP",
+                            "BATCH_COMPLETED_GROUP",
+                            "DATABASE_OBJECT_CHANGE_GROUP",
+                            "DATABASE_OBJECT_PERMISSION_CHANGE_GROUP",
+                            "DATABASE_PRINCIPAL_CHANGE_GROUP",
+                            "DATABASE_PRINCIPAL_IMPERSONATION_GROUP",
+                            "DATABASE_ROLE_MEMBER_CHANGE_GROUP"
+                        ],
+                        "isStorageSecondaryKeyInUse": false,
+                        "isAzureMonitorTargetEnabled": true
+                    }
+                },
+                {
+                    "type": "securityAlertPolicies",
+                    "name": "Default",
+                    "apiVersion": "2017-03-01-preview",
+                    "dependsOn": [
+                        "[variables('SqlServer_ResourceId')]"
+                    ],
+                    "properties": {
+                        "state": "Enabled",
+                        "disabledAlerts": [
+                        ],
+                        "emailAddresses": [
+                        ],
+                        "emailAccountAdmins": true,
+                        "retentionDays": 90
+                    }
+                },
+                {
+                    "type": "vulnerabilityAssessments",
+                    "name": "Default",
+                    "apiVersion": "2018-06-01-preview",
+                    "dependsOn": [
+                        "[variables('SqlServer_ResourceId')]",
+                        "[resourceId('Microsoft.Sql/servers/auditingSettings', parameters('SqlServer_Name'), 'DefaultAuditingSettings')]",
+                        "[resourceId('Microsoft.Sql/servers/securityAlertPolicies', parameters('SqlServer_Name'), 'Default')]"
+                    ],
+                    "properties": {
+                        "storageContainerPath": "[concat('https://', parameters('VulnerabilityAssessment_StorageAccount_Name'), '.blob.core.windows.net/', parameters('VulnerabilityAssessment_StorageAccount_Path'))]",
+                        "storageAccountAccessKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('VulnerabilityAssessment_StorageAccount_Name')), '2019-04-01').keys[0].value]",
+                        "recurringScans": {
+                            "isEnabled": false,
+                            "emailSubscriptionAdmins": true
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/providers/diagnosticSettings",
+            "name": "[concat(parameters('SqlServer_Name'), '/master/microsoft.insights/Send To Log Analytics')]",
+            "apiVersion": "2017-05-01-preview",
+            "dependsOn": [
+                "[variables('SqlServer_ResourceId')]",
+                "[resourceId('Microsoft.Sql/servers/auditingSettings', parameters('SqlServer_Name'), 'DefaultAuditingSettings')]",
+                "[resourceId('Microsoft.Sql/servers/securityAlertPolicies', parameters('SqlServer_Name'), 'Default')]"
+            ],
+            "properties": {
+                "name": "Send to Log Analytics ",
+                "workspaceId": "[variables('LogAnalyticsWorkspace_ResourceId')]",
+                "copy": [
+                    {
+                        "name": "logs",
+                        "count": "[length(variables('SqlServer_DiagnosticSettings_EnabledLogCategories'))]",
+                        "input": {
+                            "category": "[variables('SqlServer_DiagnosticSettings_EnabledLogCategories')[copyIndex('logs')]]",
+                            "enabled": true
+                        }
+                    }
+                ],
+                "metrics": [
+                    {
+                        "timeGrain": "PT1M",
+                        "enabled": true
+                    }
+                ]
+            }
+        },
+        {
+            "condition": "[greater(length(parameters('VirtualNetwork_AllowedNetworkNames')), 0)]",
+            "type": "Microsoft.Sql/servers/virtualNetworkRules",
+            "apiVersion": "2015-05-01-preview",
+            "dependsOn": [
+                "[variables('SqlServer_ResourceId')]"
+            ],
+            "copy": {
+                "name": "CreateVnetRules",
+                "count": "[length(parameters('VirtualNetwork_AllowedNetworkNames'))]"
+            },
+            "name": "[concat(parameters('SqlServer_Name'), '/', parameters('VirtualNetwork_AllowedNetworkNames')[copyIndex()])]",
+            "properties": {
+                "virtualNetworkSubnetId": "[resourceId(parameters('VirtualNetwork_ResourceGroupName'), 'Microsoft.Network/virtualNetworks/subnets', parameters('VirtualNetwork_Name'), parameters('VirtualNetwork_AllowedNetworkNames')[copyIndex()])]",
+                "ignoreMissingVnetServiceEndpoint": false
+            }
+        },
+        {
+            "condition": "[parameters('SqlServer_ConfigureSQLFirewallRules')]",
+            "type": "Microsoft.Sql/servers/firewallRules",
+            "apiVersion": "2015-05-01-preview",
+            "name": "[concat(parameters('SqlServer_Name'), '/AllowAllWindowsAzureIps')]",
+            "dependsOn": [
+                "[variables('SqlServer_ResourceId')]"
+            ],
+            "properties": {
+                "startIpAddress": "0.0.0.0",
+                "endIpAddress": "0.0.0.0"
+            }
+        },
+        {
+            "condition": "[parameters('SqlServer_ConfigureSQLFirewallRules')]",
+            "copy": {
+                "name": "CreateFirewallRules",
+                "count": "[length(parameters('SqlServer_FirewallRules'))]"
+            },
+            "type": "Microsoft.Sql/servers/firewallRules",
+            "name": "[concat(parameters('SqlServer_Name'), '/', parameters('SqlServer_FirewallRules')[copyIndex()].Name)]",
+            "apiVersion": "2014-04-01-preview",
+            "dependsOn": [
+                "[variables('SqlServer_ResourceId')]"
+            ],
+            "properties": {
+                "startIpAddress": "[parameters('SqlServer_FirewallRules')[copyIndex()].StartIPAddress]",
+                "endIpAddress": "[parameters('SqlServer_FirewallRules')[copyIndex()].EndIPAddress]"
+            }
+        },
+        {
+            "condition": "[and(parameters('SqlServer_ConfigureDNSAliases'), not(empty(parameters('SqlServer_DNSAliases'))))]",
+            "copy": {
+                "name": "DNSAliasCopy",
+                "count": "[length(parameters('SqlServer_DNSAliases'))]",
+                "mode": "Serial",
+                "batchSize": 1
+            },
+            "type": "Microsoft.Sql/servers/dnsAliases",
+            "name": "[concat(parameters('SqlServer_Name'), '/', parameters('SqlServer_DNSAliases')[copyIndex()])]",
+            "apiVersion": "2017-03-01-preview",
+            "dependsOn": [
+                "[variables('SqlServer_ResourceId')]"
+            ]
+        }
+    ],
+    "outputs": {
+        "SqlServer_Name": {
+            "type": "string",
+            "value": "[parameters('SqlServer_Name')]"
+        },
+        "SqlServer_ResourceId": {
+            "type": "string",
+            "value": "[variables('SqlServer_ResourceId')]"
+        }
+    }
+}

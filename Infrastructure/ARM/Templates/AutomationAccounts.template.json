@@ -1,0 +1,256 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "2022.4.1.1",
+    "parameters": {
+        "AnalysisServices_ServerName": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "AutomationAccounts_AnalysisServiceRefresh_Credentials_SpnPassword": {
+            "type": "SecureString",
+            "metadata": {
+                "description": "The password of the Spn Account"
+            }
+        },
+        "AutomationAccounts_AnalysisServiceRefresh_Credentials_SpnUsername": {
+            "type": "SecureString",
+            "metadata": {
+                "description": "The username of the Spn Account"
+            }
+        },
+        "AutomationAccounts_AnalysisServiceRefresh_Credentials_SqlPassword": {
+            "type": "SecureString",
+            "metadata": {
+                "description": "The password to the distribution SQL Server"
+            }
+        },
+        "AutomationAccounts_AnalysisServiceRefresh_Credentials_SqlUsername": {
+            "type": "SecureString",
+            "metadata": {
+                "description": "The username to the distribution SQL Server"
+            }
+        },
+        "AutomationAccounts_AnalysisServiceRefresh_ManagedIdentityName": {
+            "type": "String",
+            "metadata": {
+                "description": "The password of the Spn Account"
+            }
+        },
+        "AutomationAccounts_AnalysisServiceRefresh_Name": {
+            "type": "String",
+            "metadata": {
+                "description": "The name of the Azure Automation account to create."
+            }
+        },
+        "Location": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().location]",
+            "metadata": {
+                "description": "Location for all resources."
+            }
+        },
+        "LogAnalyticsWorkspace_Name": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "LogAnalyticsWorkspace_ResourceGroupName": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().name]"
+        },
+        "SqlServer_Name": {
+            "type": "string",
+            "defaultValue": ""
+        }
+    },
+    "variables": {
+        "AutomationAccounts_DiagnosticSettings_EnabledLogCategories": [
+            "AuditEvent",
+            "DscNodeStatus",
+            "JobLogs",
+            "JobStreams"
+        ]
+    },
+    "resources": [
+        {
+            "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+            "apiVersion": "2018-11-30",
+            "name": "[parameters('AutomationAccounts_AnalysisServiceRefresh_ManagedIdentityName')]",
+            "location": "[parameters('Location')]"
+        },
+        {
+            "type": "Microsoft.Automation/automationAccounts",
+            "apiVersion": "2015-10-31",
+            "name": "[parameters('AutomationAccounts_AnalysisServiceRefresh_Name')]",
+            "location": "[parameters('Location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('AutomationAccounts_AnalysisServiceRefresh_ManagedIdentityName'))]"
+            ],
+            "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                    "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('AutomationAccounts_AnalysisServiceRefresh_ManagedIdentityName'))]": {}
+                }
+            },
+            "properties": {
+                "sku": {
+                    "name": "Basic"
+                }
+            },
+            "resources": [
+                {
+                    "type": "credentials",
+                    "apiVersion": "2015-10-31",
+                    "name": "SpnUser",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Automation/automationAccounts', parameters('AutomationAccounts_AnalysisServiceRefresh_Name'))]"
+                    ],
+                    "properties": {
+                        "userName": "[parameters('AutomationAccounts_AnalysisServiceRefresh_Credentials_SpnUsername')]",
+                        "password": "[parameters('AutomationAccounts_AnalysisServiceRefresh_Credentials_SpnPassword')]"
+                    }
+                },
+                {
+                    "type": "credentials",
+                    "apiVersion": "2015-10-31",
+                    "name": "SqlUser",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Automation/automationAccounts', parameters('AutomationAccounts_AnalysisServiceRefresh_Name'))]"
+                    ],
+                    "properties": {
+                        "userName": "[parameters('AutomationAccounts_AnalysisServiceRefresh_Credentials_SqlUsername')]",
+                        "password": "[parameters('AutomationAccounts_AnalysisServiceRefresh_Credentials_SqlPassword')]"
+                    }
+                },
+                {
+                    "type": "runbooks",
+                    "apiVersion": "2019-06-01",
+                    "name": "RefreshGeneralLedger",
+                    "location": "[parameters('Location')]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Automation/automationAccounts', parameters('AutomationAccounts_AnalysisServiceRefresh_Name'))]"
+                    ],
+                    "properties": {
+                        "description": "Refresh Analysis Services General Ledger model",
+                        "logProgress": true,
+                        "logVerbose": true,
+                        "runbookType": "PowerShell"
+                    }
+                },
+                {
+                    "type": "runbooks",
+                    "apiVersion": "2019-06-01",
+                    "name": "RefreshProfitAndLoss",
+                    "location": "[parameters('Location')]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Automation/automationAccounts', parameters('AutomationAccounts_AnalysisServiceRefresh_Name'))]"
+                    ],
+                    "properties": {
+                        "description": "Refresh Analysis Services Profit and Loss model",
+                        "logProgress": true,
+                        "logVerbose": true,
+                        "runbookType": "PowerShell"
+                    }
+                },
+                {
+                    "type": "variables",
+                    "apiVersion": "2020-01-13-preview",
+                    "name": "AnalysisServicesCredentialName",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Automation/automationAccounts', parameters('AutomationAccounts_AnalysisServiceRefresh_Name'))]"
+                    ],
+                    "properties": {
+                        "description": "Credential used to connect to Azure Analysis Services for model refresh",
+                        "isEncrypted": false,
+                        "type": "String",
+                        "value": "\"SpnUser\""
+                    }
+                },
+                {
+                    "type": "variables",
+                    "apiVersion": "2020-01-13-preview",
+                    "name": "SqlServerCredentialName",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Automation/automationAccounts', parameters('AutomationAccounts_AnalysisServiceRefresh_Name'))]"
+                    ],
+                    "properties": {
+                        "description": "Credential used to connect to SQL Database for model refresh",
+                        "isEncrypted": false,
+                        "value": "\"SqlUser\""
+                    }
+                },
+                {
+                    "type": "variables",
+                    "apiVersion": "2020-01-13-preview",
+                    "name": "AnalysisServicesServerName",
+                    "condition": "[not(empty(parameters('AnalysisServices_ServerName')))]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Automation/automationAccounts', parameters('AutomationAccounts_AnalysisServiceRefresh_Name'))]"
+                    ],
+                    "properties": {
+                        "description": "Name of Azure Analysis Services server to refresh",
+                        "isEncrypted": false,
+                        "type": "String",
+                        "value": "[concat('\"', parameters('AnalysisServices_ServerName'), '\"')]"
+                    }
+                },
+                {
+                    "type": "variables",
+                    "apiVersion": "2020-01-13-preview",
+                    "name": "SqlDatabaseServerName",
+                    "condition": "[not(empty(parameters('SqlServer_Name')))]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Automation/automationAccounts', parameters('AutomationAccounts_AnalysisServiceRefresh_Name'))]"
+                    ],
+                    "properties": {
+                        "description": "Credential used to connect to Azure Analysis Services for model refresh",
+                        "isEncrypted": false,
+                        "type": "String",
+                        "value": "[concat('\"', parameters('SqlServer_Name'), '\"')]"
+                    }
+                },
+                {
+                    "type": "variables",
+                    "apiVersion": "2020-01-13-preview",
+                    "name": "SqlDatabaseName",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Automation/automationAccounts', parameters('AutomationAccounts_AnalysisServiceRefresh_Name'))]"
+                    ],
+                    "properties": {
+                        "description": "Source database name",
+                        "isEncrypted": false,
+                        "type": "String",
+                        "value": "\"MercuryEntities\""
+                    }
+                }
+            ]
+        },
+        {
+            "type": "Microsoft.Automation/automationAccounts/providers/diagnosticsettings",
+            "name": "[concat(parameters('AutomationAccounts_AnalysisServiceRefresh_Name'), '/Microsoft.Insights/Send to Log Analytics')]",
+            "apiVersion": "2017-05-01-preview",
+            "location": "[parameters('Location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Automation/automationAccounts', parameters('AutomationAccounts_AnalysisServiceRefresh_Name'))]"
+            ],
+            "properties": {
+                "workspaceId": "[resourceId(parameters('LogAnalyticsWorkspace_ResourceGroupName'), 'Microsoft.OperationalInsights/workspaces', parameters('LogAnalyticsWorkspace_Name'))]",
+                "copy": [
+                    {
+                        "name": "logs",
+                        "count": "[length(variables('AutomationAccounts_DiagnosticSettings_EnabledLogCategories'))]",
+                        "input": {
+                            "category": "[variables('AutomationAccounts_DiagnosticSettings_EnabledLogCategories')[copyIndex('logs')]]",
+                            "enabled": true
+                        }
+                    }
+                ],
+                "metrics": [
+                    {
+                        "category": "AllMetrics",
+                        "enabled": true
+                    }
+                ]
+            }
+        }
+    ]
+}

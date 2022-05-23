@@ -1,0 +1,149 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "2022.4.1.1",
+    "parameters": {
+        "CreateDeleteLocks": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "If true, the deployment will create delete locks on the created resources. The deployment principal requires the resource group Owner or User Access Administrator role for this to succeed."
+            }
+        },
+        "Location": {
+            "type": "string"
+        },
+        "LogAnalyticsWorkspace_Name": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "Log Analytics workspace used for diagnostic data"
+            }
+        },
+        "LogAnalyticsWorkspace_ResourceGroupName": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().name]"
+        },
+        "SecurityLogs_StorageAccount_Name": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "SqlDatabase_AutoPauseDelay": {
+            "type": "int",
+            "defaultValue": 0
+        },
+        "SqlDatabase_Capacity": {
+            "type": "int",
+            "defaultValue": 2
+        },
+        "SqlDatabase_MinCapacity": {
+            "type": "int",
+            "defaultValue": 2
+        },
+        "SqlDatabase_Name": {
+            "type": "string"
+        },
+        "SqlDatabase_SkuName": {
+            "type": "string"
+        },
+        "SqlServer_Name": {
+            "type": "string"
+        },
+        "VulnerabilityAssessment_StorageAccount_Name": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "VulnerabilityAssessment_StorageAccount_Path": {
+            "type": "string",
+            "defaultValue": "vulnerability-assessment"
+        }
+    },
+    "variables": {
+        "LogAnalyticsWorkspace_ResourceId": "[resourceId(parameters('LogAnalyticsWorkspace_ResourceGroupName'), 'Microsoft.OperationalInsights/workspaces', parameters('LogAnalyticsWorkspace_Name'))]",
+        "SqlServer_DiagnosticSettings_EnabledLogCategories": [
+            "AutomaticTuning",
+            "Blocks",
+            "DatabaseWaitStatistics",
+            "Deadlocks",
+            "Errors",
+            "QueryStoreRuntimeStatistics",
+            "QueryStoreWaitStatistics",
+            "SQLInsights",
+            "SQLSecurityAuditEvents",
+            "Timeouts"
+        ],
+        "SqlServer_ResourceId": "[resourceId('Microsoft.Sql/servers', parameters('SqlServer_Name'))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Sql/servers/databases",
+            "name": "[concat(parameters('SqlServer_Name'), '/', parameters('SqlDatabase_Name'))]",
+            "location": "[parameters('Location')]",
+            "apiVersion": "2017-10-01-preview",
+            "sku": {
+                "name": "[parameters('SqlDatabase_SkuName')]",
+                "capacity": "[parameters('SqlDatabase_Capacity')]"
+            },
+            "properties": {
+                "zoneRedundant": false,
+                "licenseType": "LicenseIncluded",
+                "readScale": "Disabled",
+                "readReplicaCount": 0,
+                "autoPauseDelay": "[parameters('SqlDatabase_AutoPauseDelay')]",
+                "minCapacity": "[parameters('SqlDatabase_MinCapacity')]"
+            },
+            "resources": [
+                {
+                    "name": "Microsoft.Authorization/Do Not Delete",
+                    "type": "providers/locks",
+                    "condition": "[parameters('CreateDeleteLocks')]",
+                    "apiVersion": "2015-01-01",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Sql/servers/databases', parameters('SqlServer_Name'), parameters('SqlDatabase_Name'))]"
+                    ],
+                    "properties": {
+                        "level": "CanNotDelete"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/providers/diagnosticSettings",
+            "name": "[concat(parameters('SqlServer_Name'), '/', parameters('SqlDatabase_Name'), '/microsoft.insights/Send To Log Analytics')]",
+            "apiVersion": "2017-05-01-preview",
+            "condition": "[not(empty(parameters('LogAnalyticsWorkspace_Name')))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers/databases', parameters('SqlServer_Name'), parameters('SqlDatabase_Name'))]"
+            ],
+            "properties": {
+                "name": "Send to Log Analytics ",
+                "workspaceId": "[variables('LogAnalyticsWorkspace_ResourceId')]",
+                "copy": [
+                    {
+                        "name": "logs",
+                        "count": "[length(variables('SqlServer_DiagnosticSettings_EnabledLogCategories'))]",
+                        "input": {
+                            "category": "[variables('SqlServer_DiagnosticSettings_EnabledLogCategories')[copyIndex('logs')]]",
+                            "enabled": true
+                        }
+                    }
+                ],
+                "metrics": [
+                    {
+                        "timeGrain": "PT1M",
+                        "enabled": true
+                    }
+                ]
+            }
+        }
+    ],
+    "outputs": {
+        "SqlServer_Name": {
+            "type": "string",
+            "value": "[parameters('SqlServer_Name')]"
+        },
+        "SqlServer_ResourceId": {
+            "type": "string",
+            "value": "[variables('SqlServer_ResourceId')]"
+        }
+    }
+}

@@ -1,0 +1,214 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "2022.4.1.1",
+    "parameters": {
+        "CreateDeleteLocks": {
+            "defaultValue": false,
+            "type": "bool"
+        },
+        "DataFactory_GlobalParameters": {
+            "type": "object",
+            "defaultValue": {}
+        },
+        "DataFactory_ManagedIdentity_Name": {
+            "type": "String"
+        },
+        "DataFactory_Name": {
+            "type": "string"
+        },
+        "DataFactory_PublicNetworkAccess": {
+            "type": "string",
+            "defaultValue": "Disabled",
+            "allowedValues": [
+                "Enabled",
+                "Disabled"
+            ]
+        },
+        "Location": {
+            "type": "string"
+        },
+        "LogAnalyticsWorkspace_Name": {
+            "metadata": {
+                "description": "Log Analytics workspace used for diagnostic data"
+            },
+            "type": "string",
+            "defaultValue": ""
+        },
+        "VirtualNetwork_CreatePrivateEndpoints": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "VirtualNetwork_Name": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "VirtualNetwork_PrivateEndpointSubnetName": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "VirtualNetwork_ResourceGroupName": {
+            "type": "string",
+            "defaultValue": ""
+        }
+    },
+    "variables": {
+        "DataFactory_DiagnosticLogCategories": [
+            "ActivityRuns",
+            "PipelineRuns",
+            "TriggerRuns",
+            "SandboxPipelineRuns",
+            "SandboxActivityRuns"
+        ],
+        "DataFactory_PrivateEndpoint_Name": "[concat(parameters('DataFactory_Name'), '-pe')]",
+        "DataFactory_PrivateLinkDnsZone": "privatelink.datafactory.azure.net",
+        "LogAnalyticsWorkspace_ResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('LogAnalyticsWorkspace_Name'))]",
+        "VirtualNetwork_CreatePrivateEndpoints": "[and(parameters('VirtualNetwork_CreatePrivateEndpoints'), not(empty(parameters('VirtualNetwork_Name'))))]",
+        "VirtualNetwork_PrivateEndpointSubnetId": "[resourceId(parameters('VirtualNetwork_ResourceGroupName'), 'Microsoft.Network/virtualNetworks/subnets', parameters('VirtualNetwork_Name'), parameters('VirtualNetwork_PrivateEndpointSubnetName'))]",
+        "VirtualNetwork_ResourceId": "[resourceId(parameters('VirtualNetwork_ResourceGroupName'), 'Microsoft.Network/virtualNetworks', parameters('VirtualNetwork_Name'))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+            "apiVersion": "2018-11-30",
+            "location": "[parameters('Location')]",
+            "name": "[parameters('DataFactory_ManagedIdentity_Name')]",
+            "resources": [
+                {
+                    "apiVersion": "2016-09-01",
+                    "condition": "[parameters('CreateDeleteLocks')]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('DataFactory_ManagedIdentity_Name'))]"
+                    ],
+                    "name": "Microsoft.Authorization/Do Not Delete",
+                    "properties": {
+                        "level": "CanNotDelete"
+                    },
+                    "type": "providers/locks"
+                }
+            ]
+        },
+        {
+            "type": "Microsoft.DataFactory/factories",
+            "apiVersion": "2018-06-01",
+            "name": "[parameters('DataFactory_Name')]",
+            "location": "[parameters('Location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('DataFactory_ManagedIdentity_Name'))]"
+            ],
+            "identity": {
+                "type": "SystemAssigned,UserAssigned",
+                "userAssignedIdentities": {
+                    "[resourceID('Microsoft.ManagedIdentity/userAssignedIdentities/', parameters('DataFactory_ManagedIdentity_Name'))]": {}
+                }
+            },
+            "properties": {
+                "globalParameters": "[parameters('DataFactory_GlobalParameters')]",
+                "publicNetworkAccess": "[parameters('DataFactory_PublicNetworkAccess')]"
+            }
+        },
+        {
+            "type": "Microsoft.DataFactory/factories/providers/diagnosticsettings",
+            "name": "[concat(parameters('DataFactory_Name'), '/Microsoft.Insights/Send to Log Analytics')]",
+            "apiVersion": "2017-05-01-preview",
+            "location": "[parameters('Location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.DataFactory/factories', parameters('DataFactory_Name'))]"
+            ],
+            "condition": "[not(empty(parameters('LogAnalyticsWorkspace_Name')))]",
+            "properties": {
+                "workspaceId": "[variables('LogAnalyticsWorkspace_ResourceId')]",
+                "copy": [
+                    {
+                        "name": "logs",
+                        "count": "[length(variables('DataFactory_DiagnosticLogCategories'))]",
+                        "input": {
+                            "category": "[variables('DataFactory_DiagnosticLogCategories')[copyIndex('logs')]]",
+                            "enabled": true
+                        }
+                    }
+                ],
+                "metrics": [
+                    {
+                        "category": "AllMetrics",
+                        "enabled": true
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/privateDnsZones",
+            "apiVersion": "2018-09-01",
+            "name": "[variables('DataFactory_PrivateLinkDnsZone')]",
+            "location": "global",
+            "condition": "[not(empty(parameters('VirtualNetwork_Name')))]"
+        },
+        {
+            "type": "Microsoft.Network/privateEndpoints",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('DataFactory_PrivateEndpoint_Name')]",
+            "location": "[parameters('Location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.DataFactory/factories', parameters('DataFactory_Name'))]"
+            ],
+            "condition": "[not(empty(parameters('VirtualNetwork_Name')))]",
+            "properties": {
+                "privateLinkServiceConnections": [
+                    {
+                        "name": "[variables('DataFactory_PrivateEndpoint_Name')]",
+                        "properties": {
+                            "privateLinkServiceId": "[resourceId('Microsoft.DataFactory/factories', parameters('DataFactory_Name'))]",
+                            "groupIds": [
+                                "dataFactory"
+                            ]
+                        }
+                    }
+                ],
+                "subnet": {
+                    "id": "[variables('VirtualNetwork_PrivateEndpointSubnetId')]"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+            "apiVersion": "2020-11-01",
+            "name": "[concat(variables('DataFactory_PrivateEndpoint_Name'), '/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('DataFactory_PrivateLinkDnsZone'))]",
+                "[resourceId('Microsoft.Network/privateEndpoints', variables('DataFactory_PrivateEndpoint_Name'))]"
+            ],
+            "condition": "[not(empty(parameters('VirtualNetwork_Name')))]",
+            "properties": {
+                "privateDnsZoneConfigs": [
+                    {
+                        "name": "[replace(variables('DataFactory_PrivateLinkDnsZone'), '.', '-')]",
+                        "properties": {
+                            "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('DataFactory_PrivateLinkDnsZone'))]"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "condition": "[not(empty(parameters('VirtualNetwork_Name')))]",
+            "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+            "apiVersion": "2018-09-01",
+            "name": "[concat(variables('DataFactory_PrivateLinkDnsZone'), '/', parameters('VirtualNetwork_Name'), '-link')]",
+            "location": "global",
+            "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                    "id": "[variables('VirtualNetwork_ResourceId')]"
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('DataFactory_PrivateLinkDnsZone'))]"
+            ]
+        }
+    ],
+    "outputs": {
+        "DataFactory_Name": {
+            "type": "string",
+            "value": "[parameters('DataFactory_Name')]"
+        }
+    }
+}

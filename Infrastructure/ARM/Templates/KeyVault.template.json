@@ -1,0 +1,184 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "2022.3.14.1",
+    "parameters": {
+        "CreateDeleteLocks": {
+            "defaultValue": false,
+            "metadata": {
+                "description": "If true, the deployment will create delete locks on the created resources. The deployment principal requires the resource group Owner or User Access Administrator role for this to succeed."
+            },
+            "type": "bool"
+        },
+        "KeyVault_AccessPolicies": {
+            "type": "array",
+            "defaultValue": []
+        },
+        "KeyVault_AdditionalAccessPolicies": {
+            "type": "array",
+            "defaultValue": []
+        },
+        "KeyVault_AllowedIPAddresses": {
+            "type": "array",
+            "defaultValue": []
+        },
+        "KeyVault_CreateMode": {
+            "type": "string",
+            "defaultValue": "recover",
+            "allowedValues": [
+                "default",
+                "recover"
+            ]
+        },
+        "KeyVault_EnabledForDeployment": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "KeyVault_EnabledForDiskEncryption": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "KeyVault_EnabledForTemplateDeployment": {
+            "type": "bool",
+            "defaultValue": true
+        },
+        "KeyVault_EnablePurgeProtection": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "KeyVault_EnableRbacAuthorization": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "KeyVault_EnableSoftDelete": {
+            "type": "bool",
+            "defaultValue": true
+        },
+        "KeyVault_Name": {
+            "maxLength": 24,
+            "metadata": {
+                "description": "Name of the key vault to create"
+            },
+            "minLength": 3,
+            "type": "String"
+        },
+        "KeyVault_NetworkRules_Bypass": {
+            "type": "string",
+            "defaultValue": "AzureServices",
+            "allowedValues": [
+                "AzureServices",
+                "None"
+            ]
+        },
+        "KeyVault_NetworkRules_DefaultAction": {
+            "type": "string",
+            "defaultValue": "Allow",
+            "allowedValues": [
+                "Allow",
+                "Deny"
+            ]
+        },
+        "KeyVault_PublicNetworkAccess": {
+            "type": "string",
+            "defaultValue": "Enabled",
+            "allowedValues": [
+                "Enabled",
+                "Disabled"
+            ]
+        },
+        "KeyVault_SoftDeleteRetentionInDays": {
+            "type": "int",
+            "defaultValue": 7,
+            "minValue": 7,
+            "maxValue": 90
+        },
+        "Location": {
+            "type": "string"
+        }
+    },
+    "variables": {
+        "KeyVault_ApiVersion": "2021-11-01-preview"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.KeyVault/vaults",
+            "apiVersion": "[variables('KeyVault_ApiVersion')]",
+            "name": "[parameters('KeyVault_Name')]",
+            "location": "[parameters('Location')]",
+            "properties": {
+                "accessPolicies": "[if(equals(parameters('KeyVault_CreateMode'), 'default'), parameters('KeyVault_AccessPolicies'), json('null'))]",
+                "createMode": "[parameters('KeyVault_CreateMode')]",
+                "enableRbacAuthorization": "[parameters('KeyVault_EnableRbacAuthorization')]",
+                "enabledForDeployment": "[parameters('KeyVault_EnabledForDeployment')]",
+                "enabledForDiskEncryption": "[parameters('KeyVault_EnabledForDiskEncryption')]",
+                "enabledForTemplateDeployment": "[parameters('KeyVault_EnabledForTemplateDeployment')]",
+                "enablePurgeProtection": "[if(parameters('KeyVault_EnablePurgeProtection'), json('true'), json('null'))]",
+                "enableSoftDelete": "[parameters('KeyVault_EnableSoftDelete')]",
+                "softDeleteRetentionInDays": "[parameters('KeyVault_SoftDeleteRetentionInDays')]",
+                "publicNetworkAccess": "[parameters('KeyVault_PublicNetworkAccess')]",
+                "sku": {
+                    "family": "A",
+                    "name": "Standard"
+                },
+                "tenantId": "[subscription().tenantId]",
+                "networkAcls": {
+                    "bypass": "[parameters('KeyVault_NetworkRules_Bypass')]",
+                    "defaultAction": "[parameters('KeyVault_NetworkRules_DefaultAction')]",
+                    "copy": [
+                        {
+                            "name": "ipRules",
+                            "count": "[length(parameters('KeyVault_AllowedIPAddresses'))]",
+                            "input": {
+                                "value": "[parameters('KeyVault_AllowedIPAddresses')[copyIndex('ipRules')].Value]"
+                            }
+                        }
+                    ],
+                    "virtualNetworkRules": []
+                }
+            },
+            "resources": [
+                {
+                    "name": "Microsoft.Authorization/Do Not Delete",
+                    "type": "providers/locks",
+                    "apiVersion": "2016-09-01",
+                    "condition": "[parameters('CreateDeleteLocks')]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.KeyVault/vaults', parameters('KeyVault_Name'))]"
+                    ],
+                    "properties": {
+                        "level": "CanNotDelete"
+                    }
+                }
+            ]
+        },
+        {
+            "condition": "[not(empty(parameters('KeyVault_AdditionalAccessPolicies')))]",
+            "type": "Microsoft.KeyVault/vaults/accessPolicies",
+            "name": "[concat(parameters('KeyVault_Name'), '/add')]",
+            "apiVersion": "[variables('KeyVault_ApiVersion')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('KeyVault_Name'))]"
+            ],
+            "properties": {
+                "accessPolicies": "[parameters('KeyVault_AdditionalAccessPolicies')]"
+            }
+        }
+    ],
+    "outputs": {
+        "KeyVault_Name": {
+            "type": "string",
+            "value": "[parameters('KeyVault_Name')]"
+        },
+        "KeyVault_Reference": {
+            "type": "object",
+            "value": "[reference(parameters('KeyVault_Name'), '2018-02-14')]"
+        },
+        "KeyVault_ResourceGroupName": {
+            "type": "string",
+            "value": "[resourceGroup().name]"
+        },
+        "KeyVault_VaultUri": {
+            "type": "string",
+            "value": "[reference(parameters('KeyVault_Name'), variables('KeyVault_ApiVersion')).vaultUri]"
+        }
+    }
+}

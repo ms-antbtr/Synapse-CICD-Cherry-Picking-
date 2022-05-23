@@ -1,0 +1,78 @@
+parameters:
+  - name: BuildType
+    type: string
+    values: [CI, PR, main]
+  - name: EnvironmentConfigPath
+    type: string
+    default: $(Build.StagingDirectory)/Config/Environment
+  - name: ConfTemplateFile
+    type: string
+    default: ''
+  - name: SynapsePath
+    type: string
+    default: ''
+  - name: SynapseFilePrefixToPublish
+    type: string
+    default: ''
+ # - name: Filter
+ #   type: string
+  - name: 'image'
+    type: string
+    default: ''
+
+steps:
+
+  - task: PowerShell@2
+    inputs:
+      targetType: 'inline'
+      script: |
+        echo building with ${{ parameters.image }}
+
+  - task: CopyFiles@2
+    displayName: 'Synapse deployment task for workspace: tfazsynwkslab'
+    inputs:
+     sourceFolder: '$(Build.SourcesDirectory)/sqlScript'
+     targetFolder: '$(Build.StagingDirectory)/sqlScript'
+     contents: '${{ parameters.image }}'
+
+  - task: CopyFiles@2
+    displayName: 'Synapse deployment task for workspace: tfazsynwkslab'
+    inputs:
+     sourceFolder: '$(Build.SourcesDirectory)/pipeline'
+     targetFolder: '$(Build.StagingDirectory)/pipeline'
+     contents: '${{ parameters.image }}'
+  
+
+  - task: CopyFiles@2
+    displayName: 'Synapse deployment task for workspace: tfazsynwkslab'
+    inputs:
+     sourceFolder: '$(Build.SourcesDirectory)/notebook'
+     targetFolder: '$(Build.StagingDirectory)/notebook'
+     contents: '${{ parameters.image }}'
+
+  - task: CopyFiles@2
+    displayName: 'Synapse deployment task for workspace: tfazsynwkslab'
+    inputs:
+     sourceFolder: '$(Build.SourcesDirectory)/linkedService'
+     targetFolder: '$(Build.StagingDirectory)/linkedService'
+     contents: '${{ parameters.image }}'
+
+  - task: CopyFiles@2
+    displayName: 'Synapse deployment task for workspace: tfazsynwkslab'
+    inputs:
+     sourceFolder: '$(Build.SourcesDirectory)/dataflow'
+     targetFolder: '$(Build.StagingDirectory)/dataflow'
+     contents: '${{ parameters.image }}'
+
+  - task: CopyFiles@2
+    displayName: 'Synapse deployment task for workspace: tfazsynwkslab'
+    inputs:
+     sourceFolder: '$(Build.SourcesDirectory)/sparkJobDefinition'
+     targetFolder: '$(Build.StagingDirectory)/sparkJobDefinition'
+     contents: '${{ parameters.image }}'
+
+  - task: PublishPipelineArtifact@1
+    displayName: 'Publish artifact: Project1'
+    inputs:
+      artifactName: Project1
+      targetPath: $(Build.StagingDirectory)

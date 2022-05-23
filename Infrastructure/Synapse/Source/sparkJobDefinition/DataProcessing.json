@@ -1,0 +1,35 @@
+{
+	"name": "DataProcessing",
+	"properties": {
+		"folder": {
+			"name": "Automated jobs"
+		},
+		"targetBigDataPool": {
+			"referenceName": "DataProcessing",
+			"type": "BigDataPoolReference"
+		},
+		"requiredSparkVersion": "2.4",
+		"language": "scala",
+		"jobProperties": {
+			"name": "DataProcessing",
+			"file": "abfss://mercurysynapsestaging@mercuryv2devdatalake.dfs.core.windows.net/Jars/DataProcessing/dataprocessing.jar",
+			"className": "com.microsoft.mercury.processing.Main",
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "8",
+				"spark.autotune.trackingId": "83d81a26-1c78-428a-a390-86cc9169525e"
+			},
+			"args": [
+				"--config-file-url=__ConfigFileUrl__"
+			],
+			"jars": [],
+			"files": [],
+			"driverMemory": "56g",
+			"driverCores": 8,
+			"executorMemory": "56g",
+			"executorCores": 8,
+			"numExecutors": 8
+		}
+	}
+}

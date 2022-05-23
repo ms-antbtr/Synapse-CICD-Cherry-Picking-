@@ -1,0 +1,127 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "2022.3.8.1",
+    "parameters": {
+        "Location": {
+            "type": "string"
+        },
+        "SynapseWorkspace_BigDataPool_AutoPauseDelayInMinutes": {
+            "type": "int",
+            "minValue": 5,
+            "maxValue": 60,
+            "defaultValue": 15
+        },
+        "SynapseWorkspace_BigDataPool_AutoPauseEnabled": {
+            "type": "bool",
+            "defaultValue": true
+        },
+        "SynapseWorkspace_BigDataPool_AutoScaleEnabled": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "SynapseWorkspace_BigDataPool_AutoScaleMaxNodeCount": {
+            "type": "int",
+            "minValue": 3,
+            "maxValue": 40,
+            "defaultValue": 10
+        },
+        "SynapseWorkspace_BigDataPool_AutoScaleMinNodeCount": {
+            "type": "int",
+            "minValue": 3,
+            "maxValue": 10,
+            "defaultValue": 3
+        },
+        "SynapseWorkspace_BigDataPool_DynamicExecutorAllocationEnabled": {
+            "type": "bool",
+            "defaultValue": true
+        },
+        "SynapseWorkspace_BigDataPool_DynamicExecutorAllocationMaxExecutors": {
+            "type": "int",
+            "minValue": 3,
+            "maxValue": 20,
+            "defaultValue": 10
+        },
+        "SynapseWorkspace_BigDataPool_DynamicExecutorAllocationMinExecutors": {
+            "type": "int",
+            "minValue": 3,
+            "maxValue": 10,
+            "defaultValue": 3
+        },
+        "SynapseWorkspace_BigDataPool_Name": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 20
+        },
+        "SynapseWorkspace_BigDataPool_NodeCount": {
+            "type": "int",
+            "minValue": 3,
+            "maxValue": 20,
+            "defaultValue": 3
+        },
+        "SynapseWorkspace_BigDataPool_NodeSize": {
+            "type": "string",
+            "allowedValues": [
+                "Large",
+                "Medium",
+                "Small",
+                "XLarge",
+                "XXLarge",
+                "XXXLarge",
+                "large",
+                "medium",
+                "small",
+                "xlarge",
+                "xxlarge",
+                "xxxlarge"
+            ],
+            "defaultValue": "small"
+        },
+        "SynapseWorkspace_BigDataPool_NodeSizeFamily": {
+            "type": "string",
+            "defaultValue": "MemoryOptimized",
+            "allowedValues": [ "MemoryOptimized" ]
+        },
+        "SynapseWorkspace_BigDataPool_SessionLevelPackagesEnabled": {
+            "type": "bool",
+            "defaultValue": true
+        },
+        "SynapseWorkspace_BigDataPool_SparkVersion": {
+            "type": "string",
+            "allowedValues": [ "2.4", "3.1" ],
+            "defaultValue": "3.1"
+        },
+        "SynapseWorkspace_Name": {
+            "type": "String"
+        }
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Synapse/workspaces/bigDataPools",
+            "apiVersion": "2021-06-01-preview",
+            "name": "[concat(parameters('SynapseWorkspace_Name'), '/', parameters('SynapseWorkspace_BigDataPool_Name'))]",
+            "location": "[parameters('Location')]",
+            "properties": {
+                "autoPause": {
+                    "delayInMinutes": "[parameters('SynapseWorkspace_BigDataPool_AutoPauseDelayInMinutes')]",
+                    "enabled": "[parameters('SynapseWorkspace_BigDataPool_AutoPauseEnabled')]"
+                },
+                "autoScale": {
+                    "enabled": "[parameters('SynapseWorkspace_BigDataPool_AutoScaleEnabled')]",
+                    "maxNodeCount": "[parameters('SynapseWorkspace_BigDataPool_AutoScaleMaxNodeCount')]",
+                    "minNodeCount": "[parameters('SynapseWorkspace_BigDataPool_AutoScaleMinNodeCount')]"
+                },
+                "dynamicExecutorAllocation": {
+                    "enabled": "[parameters('SynapseWorkspace_BigDataPool_DynamicExecutorAllocationEnabled')]",
+                    "maxExecutors": "[parameters('SynapseWorkspace_BigDataPool_DynamicExecutorAllocationMaxExecutors')]",
+                    "minExecutors": "[parameters('SynapseWorkspace_BigDataPool_DynamicExecutorAllocationMinExecutors')]"
+                },
+                "isComputeIsolationEnabled": false,
+                "nodeCount": "[parameters('SynapseWorkspace_BigDataPool_NodeCount')]",
+                "nodeSize": "[parameters('SynapseWorkspace_BigDataPool_NodeSize')]",
+                "nodeSizeFamily": "[parameters('SynapseWorkspace_BigDataPool_NodeSizeFamily')]",
+                "sessionLevelPackagesEnabled": "[parameters('SynapseWorkspace_BigDataPool_SessionLevelPackagesEnabled')]",
+                "sparkVersion": "[parameters('SynapseWorkspace_BigDataPool_SparkVersion')]"
+            }
+        }
+    ]
+}
