@@ -1,0 +1,4 @@
+steps:
+    - script: 'dir /a-d /b /s *.* | find /V "\.git\"'
+      displayName: 'Cmd: List pipeline workspace files (excluding .git folders)'
+      workingDirectory: $(Pipeline.Workspace)

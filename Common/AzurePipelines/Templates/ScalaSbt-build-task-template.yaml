@@ -1,0 +1,55 @@
+parameters:
+    - name: BuildType
+      type: string
+      values: [CI, PR, main]
+    - name: IncludeCodeCoverage
+      type: boolean
+      default: true
+    - name: IncludeScalaStyleCheck
+      type: boolean
+      default: false
+    - name: IncludeScalaFmtCheck
+      type: boolean
+      default: false
+    - name: RunTestTasks
+      type: boolean
+      default: true
+    # Full path to the folder containing build.sbt
+    - name: SbtProjectPath
+      type: string
+
+steps:
+    - ${{ if parameters.IncludeScalaFmtCheck }}:
+          - task: CmdLine@2
+            displayName: 'sbt: scalafmtCheck'
+            inputs:
+                script: sbt scalafmtCheck
+                workingDirectory: ${{ parameters.SbtProjectPath }}
+
+    - ${{ if or(parameters.RunTestTasks, parameters.IncludeCodeCoverage) }}:
+          - task: CmdLine@2
+            displayName: 'sbt: coverage test coverageReport'
+            inputs:
+                script: sbt coverage test coverageReport
+                workingDirectory: ${{ parameters.SbtProjectPath }}
+
+    - ${{ if parameters.RunTestTasks }}:
+          - task: PublishTestResults@2
+            displayName: 'Publish Test Results **/TEST-*.xml'
+            inputs:
+                failTaskOnFailedTests: true
+                searchFolder: ${{ parameters.SbtProjectPath }}/target/test-reports
+
+    - ${{ if parameters.IncludeCodeCoverage }}:
+          - task: PublishCodeCoverageResults@1
+            displayName: 'Publish code coverage'
+            inputs:
+                codeCoverageTool: Cobertura
+                summaryFileLocation: '${{ parameters.SbtProjectPath }}/target/**/cobertura.xml'
+
+    # Build step
+    - task: CmdLine@2
+      displayName: 'sbt: clean compile package'
+      inputs:
+          script: sbt "set version := ""${{ parameters.BuildType }}-$(Build.BuildNumber)""" clean compile package
+          workingDirectory: ${{ parameters.SbtProjectPath }}

@@ -1,0 +1,47 @@
+#
+# Determines the user profile module path, copies the Common modules to the user profile, and copies the Common scripts and modules to the build artifacts
+#
+parameters:
+  # (Optional) Whether to copy the PowerShell scripts and modules to the build artifacts. Default is "true"
+  - name: CopyToBuildArtifacts
+    type: boolean
+    default: true
+  # (Optional) Path to PowerShell files - specified path should contain a "Scripts" and "Modules"
+  - name: PowerShellPath
+    type: string
+    default: $(Build.SourcesDirectory)/Common/PowerShell
+
+steps:
+  - task: PowerShell@2
+    displayName: 'Get user PowerShell module path (pwsh)'
+    inputs:
+      debugPreference: silentlyContinue
+      errorActionPreference: stop
+      failOnStderr: true
+      pwsh: true
+      targetType: inline
+      verbosePreference: continue
+      script: |
+        $UserProfilePath = $ENV:USERPROFILE
+        Write-Host "User profile path :  $UserProfilePath"
+
+        $UserProfileModulePath = Join-Path -Path $UserProfilePath -ChildPath Documents -AdditionalChildPath WindowsPowerShell, Modules
+        Write-Host "User module path  :  $UserProfileModulePath"
+
+        Write-Host "##vso[task.setvariable variable=UserProfileModulePath;]$UserProfileModulePath"
+
+  - task: CopyFiles@2
+    displayName: 'Copy: PowerShell modules to user profile location'
+    inputs:
+      sourceFolder: ${{ parameters.PowerShellPath }}/Modules
+      targetFolder: $(UserProfileModulePath)
+
+  - ${{ if parameters.CopyToBuildArtifacts }}:
+      - task: CopyFiles@2
+        displayName: 'Copy: PowerShell scripts and modules to build artifacts'
+        inputs:
+          sourceFolder: ${{ parameters.PowerShellPath }}
+          targetFolder: $(Build.StagingDirectory)/PowerShell
+          content: |
+            Modules/*
+            Scripts/*.ps1

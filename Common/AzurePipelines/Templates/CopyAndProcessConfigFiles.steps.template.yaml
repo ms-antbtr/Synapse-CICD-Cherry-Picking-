@@ -1,0 +1,56 @@
+parameters:
+    # Path to the source folder containing the environment configuration files
+    - name: ConfigPath
+      type: string
+      default: $(Build.SourcesDirectory)/Common/Config
+    # Relative path to the artifact location to store the unprocessed config files
+    - name: ArtifactSourcePath
+      type: string
+      default: Config/Source
+    # Relative path to the artifact location to store the processed config files
+    - name: ArtifactTargetPath
+      type: string
+      default: Config
+    # Path to PowerShell modules
+    - name: PowerShellPath
+      type: string
+      default: $(Build.SourcesDirectory)/Common/PowerShell
+    # Path to environment config schema file
+    - name: SchemaFile
+      type: string
+      default: $(Build.SourcesDirectory)/Common/Config/Schema/EnvironmentConfig.schema.json
+
+steps:
+    # Copy PowerShell modules to local module path
+    - template: CopyPowerShellModuleToProfile.steps.template.yaml
+
+    - task: CopyFiles@2
+      displayName: 'Copy: Config files to artifact source location'
+      inputs:
+          sourceFolder: ${{ parameters.ConfigPath }}
+          contents: |
+              **/*.json
+              !_*.json
+          targetFolder: '$(Build.StagingDirectory)/${{ parameters.ArtifactSourcePath }}'
+
+    - pwsh: |
+          Import-Module -Name ConfigFunctions
+
+          $Params = @{
+              Path = '$(Build.StagingDirectory)/${{ parameters.ArtifactSourcePath }}';
+              TokenFile = '.';
+              OutputFolder = '$(Build.StagingDirectory)/${{ parameters.ArtifactTargetPath }}';
+          }
+
+          $Params.Keys | Sort-Object | ForEach-Object { Write-Verbose "$_ : $Params.Item($_)" }
+          
+          ReplaceTokensInFiles @Params -Verbose -Passes 5
+      displayName: 'Pwsh: Process config file self-tokens into artifact target location'
+      errorActionPreference: stop
+
+    - pwsh: |
+          Import-Module -Name ConfigFunctions
+
+          Test-ConfigFileSchema -ConfigPath '$(Build.StagingDirectory)/${{ parameters.ArtifactTargetPath }}' -SchemaFile '${{ parameters.SchemaFile }}' -ErrorOnMissingSchemaFile
+      displayName: 'Pwsh: Validate environment config files against schema'
+      errorActionPreference: stop

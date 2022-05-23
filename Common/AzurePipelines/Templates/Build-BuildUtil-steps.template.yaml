@@ -1,0 +1,56 @@
+#
+# Contains the steps to build the BuildUtil solution that is used to validate the `Common/Config` file schemas
+#
+# This template must be included in an existing job to use `BuildUtil` validation type
+#
+parameters:
+  # (Optional) Path to the BuildUtil solution. Default is 'Common/BuildUtil/BuildUtil.sln'
+  - name: SolutionPath
+    type: string
+    default: $(Build.SourcesDirectory)/Common/BuildUtil/BuildUtil.sln
+  # (Optional) Folder to place the resulting file. Default is 'Bin' in the artifact staging
+  - name: OutDir
+    type: string
+    default: $(Build.StagingDirectory)/Bin
+  # (Optional) Path to specific nuget config file. Default is 'Common/BuildUtil/nuget.config'
+  # If blank, solution nuget configuration will be used
+  - name: NuGetConfigFile
+    type: string
+    default: $(Build.SourcesDirectory)/Common/BuildUtil/nuget.config
+
+steps:
+  #
+  # NuGet version 5.8.0 or later is required for .NET 5.0 projects
+  #
+  - task: NuGetToolInstaller@1
+    displayName: 'NuGet >= 5.8.0 for .NET 5.0 project'
+    inputs:
+      versionSpec: '>=5.8.0'
+
+  #
+  # Restore NuGet packages
+  #
+  - task: NuGetCommand@2
+    displayName: 'NuGet restore packages'
+    inputs:
+      command: restore
+      restoreSolution: ${{ parameters.SolutionPath }}
+      # When a 'NuGetConfigFile' value is provided, conditionally insert the parameter values to restore from that file
+      ${{ if ne(parameters.NuGetConfigFile, '') }}:
+        feedsToUse: config
+        includeNuGetOrg: false
+        nugetConfigPath: ${{ parameters.NuGetConfigFile }}
+
+  #
+  # Build solution
+  #
+  # By default, output files are placed directly in the build artifacts. The location is determined by the `OutDir` template parameter
+  #
+  - task: VSBuild@1
+    displayName: 'VSBuild solution'
+    inputs:
+      solution: ${{ parameters.SolutionPath }}
+      vsVersion: 17.0
+      platform: any cpu
+      configuration: release
+      msbuildArgs: '-property:OutDir="${{ parameters.OutDir }}"'

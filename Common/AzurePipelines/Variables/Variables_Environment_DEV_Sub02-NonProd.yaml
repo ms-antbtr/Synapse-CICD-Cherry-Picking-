@@ -1,0 +1,4 @@
+variables:
+  EnvironmentName: MercuryV2-DEV # https://microsoftit.visualstudio.com/OneITVSO/_environments/949
+  ServiceConnectionName: MercV2DevNonProd # https://microsoftit.visualstudio.com/OneITVSO/_settings/adminservices?resourceId=52f328f4-1eec-4257-84db-eef2d4c8298b
+  ServiceConnectionNameEv2: MercV2DevEv2Test # https://microsoftit.visualstudio.com/OneITVSO/_settings/adminservices?resourceId=b8c8afe8-c195-49ef-8fff-3c7f6753ebb9

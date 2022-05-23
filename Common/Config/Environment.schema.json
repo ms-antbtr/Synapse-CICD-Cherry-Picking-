@@ -1,0 +1,928 @@
+{
+    "$id": "https://mercury.microsoft.com/EnvironmentConfig.schema.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "additionalProperties": false,
+    "definitions": {
+        "AnalysisServices_FirewallRuleItem": {
+            "properties": {
+                "FirewallRuleName": {
+                    "type": "string"
+                },
+                "RangeEnd": {
+                    "$ref": "#/definitions/IPv4Address"
+                },
+                "RangeStart": {
+                    "$ref": "#/definitions/IPv4Address"
+                }
+            },
+            "required": [
+                "FirewallRuleName",
+                "RangeStart",
+                "RangeEnd"
+            ],
+            "type": "object"
+        },
+        "AzureResourceName_AnalysisServicesServerName": {
+            "maxLength": 128,
+            "minLength": 3,
+            "pattern": "^[a-z][a-z0-9]+$",
+            "type": "string"
+        },
+        "AzureResourceName_CosmosDbAccount": {
+            "maxLength": 64,
+            "minLength": 3,
+            "pattern": "^[a-z][a-z0-9-]+[a-z0-9]",
+            "type": "string"
+        },
+        "AzureResourceName_Default": {
+            "maxLength": 64,
+            "minLength": 3,
+            "pattern": "^[A-Za-z][A-Za-z0-9-]+[A-Za-z0-9]$",
+            "type": "string"
+        },
+        "AzureResourceName_ResourceGroup": {
+            "maxLength": 64,
+            "minLength": 3,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9-]+[A-Za-z0-9]$",
+            "type": "string"
+        },
+        "AzureResourceName_StorageAccount": {
+            "maxLength": 24,
+            "minLength": 3,
+            "pattern": "^[a-z0-9]{3,24}$",
+            "type": "string"
+        },
+        "CosmosDb_Database_Container": {
+            "properties": {
+                "Name": {
+                    "minLength": 3,
+                    "type": "string"
+                },
+                "PartitionKey": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Name",
+                "PartitionKey"
+            ]
+        },
+        "GUID": {
+            "minLength": 32,
+            "pattern": "^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$",
+            "type": "string"
+        },
+        "IPv4Address": {
+            "examples": [
+                "192.168.100.1"
+            ],
+            "pattern": "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$",
+            "type": "string"
+        },
+        "IPv4FirewallRule": {
+            "additionalProperties": false,
+            "properties": {
+                "EndIpAddress": {
+                    "$ref": "#/definitions/IPv4Address"
+                },
+                "Name": {
+                    "examples": [
+                        "Corp_Bangalore_167.220.226.0_23"
+                    ],
+                    "pattern": "^.*$",
+                    "type": "string"
+                },
+                "StartIpAddress": {
+                    "$ref": "#/definitions/IPv4Address"
+                }
+            },
+            "required": [
+                "EndIpAddress",
+                "Name",
+                "StartIpAddress"
+            ],
+            "type": "object"
+        },
+        "IPv4NetworkAddress": {
+            "examples": [
+                "192.168.100.1"
+            ],
+            "pattern": "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}(/[0-3]?[0-9]{1})?$",
+            "type": "string"
+        },
+        "KeyVault_AccessPolicyEntry": {
+            "properties": {
+                "objectId": {
+                    "$ref": "#/definitions/GUID"
+                },
+                "permissions": {
+                    "type": "object"
+                },
+                "tenantId": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "objectId",
+                "permissions",
+                "tenantId"
+            ],
+            "type": "object"
+        },
+        "ManagedPrivateEndpoint": {
+            "additionalProperties": false,
+            "properties": {
+                "GroupId": {
+                    "enum": [
+                        "dfs",
+                        "blob",
+                        "namespace",
+                        "sql",
+                        "sqlServer",
+                        "vault"
+                    ],
+                    "type": "string"
+                },
+                "TargetResourceGroupName": {
+                    "type": "string"
+                },
+                "TargetResourceName": {
+                    "type": "string"
+                },
+                "TargetResourceType": {
+                    "enum": [
+                        "Microsoft.DocumentDb/databaseAccounts",
+                        "Microsoft.EventHub/namespaces",
+                        "Microsoft.KeyVault/vaults",
+                        "Microsoft.Sql/servers",
+                        "Microsoft.Storage/storageAccounts"
+                    ],
+                    "type": "string"
+                },
+                "TargetSubscriptionId": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "GroupId",
+                "TargetResourceName",
+                "TargetResourceType"
+            ],
+            "type": "object"
+        },
+        "RbacRoleAssignment": {
+            "properties": {
+                "Name": {
+                    "type": "string"
+                },
+                "PrincipalId": {
+                    "$ref": "#/definitions/GUID"
+                },
+                "RoleDefinitionName": {
+                    "enum": [
+                        "App Configuration Data Owner",
+                        "App Configuration Data Reader",
+                        "Contributor",
+                        "Cosmos DB Account Reader Role",
+                        "DocumentDB Account Contributor",
+                        "Monitoring Reader",
+                        "Reader",
+                        "Storage Blob Data Reader",
+                        "Storage Blob Data Contributor"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "PrincipalId",
+                "RoleDefinitionName"
+            ],
+            "type": "object"
+        },
+        "SynapseObjectDefinitionOverride": {
+            "patternProperties": {
+                ".*": {
+                    "patternProperties": {
+                        ".*": {
+                            "oneOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                },
+                                {
+                                    "type": "boolean"
+                                }
+                            ]
+                        }
+                    },
+                    "type": "object"
+                }
+            },
+            "type": "object"
+        },
+        "SynapseSparkJobDefinitionOverrides": {
+            "properties": {
+                "properties_jobProperties_conf_spark.dynamicAllocation.minExecutors": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "SynapseWorkspace_BigDataPool": {
+            "properties": {
+                "AutoPauseDelayInMinutes": {
+                    "maximum": 120,
+                    "minimum": 5,
+                    "type": "integer"
+                },
+                "AutoPauseEnabled": {
+                    "type": "boolean"
+                },
+                "AutoScaleEnabled": {
+                    "type": "boolean"
+                },
+                "AutoScaleMaxNodeCount": {
+                    "maximum": 200,
+                    "minimum": 2,
+                    "type": "integer"
+                },
+                "AutoScaleMinNodeCount": {
+                    "maximum": 20,
+                    "minimum": 2,
+                    "type": "integer"
+                },
+                "DynamicExecutorAllocationEnabled": {
+                    "type": "boolean"
+                },
+                "DynamicExecutorAllocationMaxExecutors": {
+                    "maximum": 200,
+                    "minimum": 2,
+                    "type": "integer"
+                },
+                "DynamicExecutorAllocationMinExecutors": {
+                    "maximum": 20,
+                    "minimum": 2,
+                    "type": "integer"
+                },
+                "Name": {
+                    "type": "string"
+                },
+                "NodeCount": {
+                    "maximum": 200,
+                    "minimum": 2,
+                    "type": "integer"
+                },
+                "NodeSize": {
+                    "enum": [
+                        "Small",
+                        "Medium",
+                        "Large",
+                        "XLarge",
+                        "XXLarge",
+                        "XXXLarge"
+                    ],
+                    "type": "string"
+                },
+                "NodeSizeFamily": {
+                    "enum": [
+                        "MemoryOptimized"
+                    ],
+                    "type": "string"
+                },
+                "SessionLevelPackagesEnabled": {
+                    "type": "boolean"
+                },
+                "SparkConfig": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "SparkVersion": {
+                    "enum": [
+                        "2.4",
+                        "3.1"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "AutoPauseDelayInMinutes",
+                "AutoPauseEnabled",
+                "AutoScaleEnabled",
+                "AutoScaleMaxNodeCount",
+                "AutoScaleMinNodeCount",
+                "DynamicExecutorAllocationEnabled",
+                "DynamicExecutorAllocationMaxExecutors",
+                "DynamicExecutorAllocationMinExecutors",
+                "Name",
+                "NodeCount",
+                "NodeSize",
+                "NodeSizeFamily",
+                "SessionLevelPackagesEnabled",
+                "SparkVersion"
+            ],
+            "type": "object"
+        },
+        "SynapseWorkspaceConfiguration": {
+            "additionalProperties": false,
+            "properties": {
+                "BigDataPool_SparkConfigs": {
+                    "patternProperties": {
+                        ".*": {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "type": "object"
+                },
+                "LinkedServices": {
+                    "$ref": "#/definitions/SynapseObjectDefinitionOverride"
+                },
+                "ManagedPrivateEndpoints": {
+                    "patternProperties": {
+                        ".*": {
+                            "$ref": "#/definitions/ManagedPrivateEndpoint"
+                        }
+                    },
+                    "type": "object"
+                },
+                "Notebooks": {
+                    "$ref": "#/definitions/SynapseObjectDefinitionOverride"
+                },
+                "Pipelines": {
+                    "$ref": "#/definitions/SynapseObjectDefinitionOverride"
+                },
+                "RoleAssignments": {
+                    "additionalProperties": false,
+                    "items": {
+                        "properties": {
+                            "Name": {
+                                "type": "string"
+                            },
+                            "ObjectId": {
+                                "$ref": "#/definitions/GUID"
+                            },
+                            "PrincipalType": {
+                                "pattern": "([Uu]ser|[Gg]roup|[Ss]ervice[Pp]rincipal)",
+                                "type": "string"
+                            },
+                            "RoleDefinitionName": {
+                                "enum": [
+                                    "Synapse Administrator",
+                                    "Synapse Artifact User",
+                                    "Synapse Compute Operator",
+                                    "Synapse Credential User",
+                                    "Synapse Monitor Operator",
+                                    "Synapse User"
+                                ],
+                                "type": "string"
+                            },
+                            "UserPrincipalName": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "PrincipalType",
+                            "ObjectId",
+                            "RoleDefinitionName"
+                        ],
+                        "type": "object"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                },
+                "SparkJobDefinitions": {
+                    "$ref": "#/definitions/SynapseObjectDefinitionOverride"
+                },
+                "Triggers": {
+                    "$ref": "#/definitions/SynapseObjectDefinitionOverride"
+                }
+            },
+            "type": "object"
+        }
+    },
+    "properties": {
+        "$BuildId": {
+            "default": "__BuildId__",
+            "type": "string"
+        },
+        "$schema": {
+            "type": "string"
+        },
+        "$TemplateParameterCopy": {
+            "additionalProperties": true,
+            "properties": {
+                "SynapseWorkspace": {
+                    "patternProperties": {
+                        ".*": {
+                            "properties": {
+                                "ManagedResourceGroupName": {
+                                    "type": "string"
+                                },
+                                "Name": {
+                                    "$ref": "#/definitions/AzureResourceName_Default"
+                                },
+                                "UseCustomerManagedKey": {
+                                    "default": false,
+                                    "type": "boolean"
+                                },
+                                "UseExistingStorageAccount": {
+                                    "default": true,
+                                    "type": "boolean"
+                                },
+                                "UserAssignedIdentity_Name": {
+                                    "$ref": "#/definitions/AzureResourceName_Default"
+                                }
+                            },
+                            "required": [
+                                "Name",
+                                "ManagedResourceGroupName",
+                                "UserAssignedIdentity_Name"
+                            ],
+                            "type": "object"
+                        }
+                    }
+                },
+                "SynapseWorkspace_BigDataPool": {
+                    "patternProperties": {
+                        ".*": {
+                            "$ref": "#/definitions/SynapseWorkspace_BigDataPool"
+                        }
+                    },
+                    "type": "object"
+                }
+            },
+            "type": "object"
+        },
+        "AnalysisServices_IpV4FirewallSettings_FirewallRules": {
+            "additionalItems": false,
+            "items": {
+                "$ref": "#/definitions/AnalysisServices_FirewallRuleItem"
+            },
+            "type": "array"
+        },
+        "AnalysisServices_ServerName": {
+            "$ref": "#/definitions/AzureResourceName_AnalysisServicesServerName"
+        },
+        "AnalysisServices_SkuName": {
+            "enum": [
+                "D1",
+                "B1",
+                "B2",
+                "S0",
+                "S1",
+                "S2",
+                "S4",
+                "S8",
+                "S9",
+                "S8v2",
+                "S9v2"
+            ],
+            "type": "string"
+        },
+        "AppConfiguration_KeyValues": {
+            "properties": {
+                "value": {
+                    "items": {
+                        "properties": {
+                            "ContentType": {
+                                "enum": [
+                                    "",
+                                    "text/plain",
+                                    "text/json"
+                                ],
+                                "type": "string"
+                            },
+                            "Name": {
+                                "default": "",
+                                "type": "string"
+                            },
+                            "Value": {
+                                "default": "",
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "Name",
+                            "Value",
+                            "ContentType"
+                        ]
+                    },
+                    "type": "array"
+                }
+            }
+        },
+        "AppConfiguration_Name": {
+            "$ref": "#/definitions/AzureResourceName_Default"
+        },
+        "AppConfiguration_RbacRoleAssignments": {
+            "items": {
+                "$ref": "#/definitions/RbacRoleAssignment"
+            },
+            "type": "array"
+        },
+        "AppConfiguration_SetRbacRoles": {
+            "default": false,
+            "type": "boolean"
+        },
+        "ApplicationId_MercNPV2Application": {
+            "$ref": "#/definitions/GUID"
+        },
+        "ApplicationInsights_Name": {
+            "$ref": "#/definitions/AzureResourceName_Default"
+        },
+        "CosmosDb_Account_AllowedIpAddresses": {
+            "items": {
+                "$ref": "#/definitions/IPv4NetworkAddress"
+            },
+            "type": "array"
+        },
+        "CosmosDb_Account_Name": {
+            "$ref": "#/definitions/AzureResourceName_CosmosDbAccount"
+        },
+        "CosmosDb_Database_Containers": {
+            "items": {
+                "$ref": "#/definitions/CosmosDb_Database_Container"
+            },
+            "type": "array"
+        },
+        "CosmosDb_Database_Name": {
+            "maxLength": 50,
+            "minLength": 3,
+            "type": "string"
+        },
+        "CosmosDb_PrimaryAccount_Name": {
+            "type": "string"
+        },
+        "CosmosDb_PrimaryAccount_ResourceGroupName": {
+            "type": "string"
+        },
+        "CosmosDb_RbacRoleAssignments": {
+            "items": {
+                "$ref": "#/definitions/RbacRoleAssignment"
+            },
+            "type": "array"
+        },
+        "CosmosDb_SetRbacRoles": {
+            "default": false,
+            "type": "boolean"
+        },
+        "DataFactory_ManagedIdentity_Name": {},
+        "DataFactory_Name": {
+            "maxLength": 63,
+            "minLength": 3,
+            "pattern": "^[A-Za-z][A-Za-z0-9-]+[A-Za-z0-9]$",
+            "type": "string"
+        },
+        "DataLakePublicStore_StorageAccountName": {
+            "$ref": "#/definitions/AzureResourceName_StorageAccount"
+        },
+        "DataLakeStorageAccount_AccessTier": {
+            "enum": [
+                "Hot",
+                "Cool"
+            ],
+            "type": "string"
+        },
+        "DataLakeStorageAccount_Kind": {
+            "default": "StorageV2",
+            "enum": [
+                "StorageV2",
+                "BlockBlobStorage"
+            ],
+            "type": "string"
+        },
+        "DataLakeStorageAccount_Name": {
+            "$ref": "#/definitions/AzureResourceName_StorageAccount"
+        },
+        "DataLakeStorageAccount_NetworkAclsDefaultAction": {
+            "default": "Deny",
+            "enum": [
+                "Allow",
+                "Deny"
+            ],
+            "type": "string"
+        },
+        "DataLakeStorageAccount_RbacRoleAssignments": {
+            "items": {
+                "$ref": "#/definitions/RbacRoleAssignment"
+            },
+            "type": "array"
+        },
+        "DataLakeStorageAccount_SetRbacRoles": {
+            "default": false,
+            "type": "boolean"
+        },
+        "DataLakeStorageAccount_SkuName": {
+            "enum": [
+                "Premium_LRS",
+                "Premium_ZRS",
+                "Standard_LRS",
+                "Standard_ZRS",
+                "Standard_GZRS",
+                "Standard_GRS",
+                "Standard_RAGZRS",
+                "Standard_RAGRS"
+            ],
+            "type": "string"
+        },
+        "DiagnosticStorageAccount_Name": {
+            "$ref": "#/definitions/AzureResourceName_StorageAccount"
+        },
+        "DiagnosticStorageAccount_NetworkAclsDefaultAction": {
+            "default": "Deny",
+            "enum": [
+                "Allow",
+                "Deny"
+            ],
+            "type": "string"
+        },
+        "EnvironmentType": {
+            "default": "",
+            "type": "string"
+        },
+        "EventHub_Namespace_Name": {
+            "$ref": "#/definitions/AzureResourceName_Default"
+        },
+        "FinanceDataLake_Hana_StorageAccountName_FQDN": {
+            "default": "",
+            "type": "string"
+        },
+        "FinanceDataLake_StorageAccountName": {
+            "$ref": "#/definitions/AzureResourceName_StorageAccount"
+        },
+        "KeyVault_AccessPolicies": {
+            "items": {
+                "$ref": "#/definitions/KeyVault_AccessPolicyEntry"
+            },
+            "type": "array"
+        },
+        "KeyVault_AllowedIPAddresses": {
+            "items": {
+                "properties": {
+                    "Name": {
+                        "default": "",
+                        "type": "string"
+                    },
+                    "Value": {
+                        "$ref": "#/definitions/IPv4NetworkAddress"
+                    }
+                }
+            },
+            "type": "array"
+        },
+        "KeyVault_EnablePurgeProtection": {
+            "default": false,
+            "type": "boolean"
+        },
+        "KeyVault_EnableSoftDelete": {
+            "default": true,
+            "type": "boolean"
+        },
+        "KeyVault_Name": {
+            "examples": [
+                "mercuryvedevkv"
+            ],
+            "pattern": "^.*$",
+            "type": "string"
+        },
+        "KeyVault_NetworkAcls_AllowedIpAddresses": {
+            "items": {
+                "$ref": "#/definitions/IPv4NetworkAddress"
+            },
+            "type": "array"
+        },
+        "KeyVault_NetworkAcls_Bypass": {
+            "enum": [
+                "None",
+                "AzureServices"
+            ],
+            "type": "string"
+        },
+        "KeyVault_NetworkAcls_DefaultAction": {
+            "enum": [
+                "Allow",
+                "Deny"
+            ],
+            "type": "string"
+        },
+        "KeyVault_NetworkRules_DefaultAction": {
+            "enum": [
+                "Allow",
+                "Deny"
+            ],
+            "type": "string"
+        },
+        "KeyVault_ResourceGroup_Name": {
+            "$ref": "#/definitions/AzureResourceName_ResourceGroup"
+        },
+        "Location": {
+            "enum": [
+                "centralus",
+                "eastus",
+                "eastus2",
+                "northcentralus",
+                "southcentralus",
+                "westcentralus",
+                "westus",
+                "westus2",
+                "westus3"
+            ],
+            "type": "string"
+        },
+        "LocationAbbr": {
+            "enum": [
+                "cus",
+                "eus",
+                "eus2",
+                "ncus",
+                "scus",
+                "wcus",
+                "wus",
+                "wus2",
+                "wus3"
+            ],
+            "type": "string"
+        },
+        "LogAnalyticsWorkspace_AddSecretsToKeyVault": {
+            "default": false,
+            "type": "boolean"
+        },
+        "LogAnalyticsWorkspace_Name": {
+            "$ref": "#/definitions/AzureResourceName_Default"
+        },
+        "MercuryV2_CosmosDb_Account_Name": {
+            "$ref": "#/definitions/AzureResourceName_CosmosDbAccount"
+        },
+        "MercuryV2_DataLakeStorageAccount_Name": {
+            "$ref": "#/definitions/AzureResourceName_StorageAccount"
+        },
+        "MercuryV2_KeyVault_Name": {
+            "$ref": "#/definitions/AzureResourceName_Default"
+        },
+        "MercuryV2_ResourceGroup_Name": {
+            "$ref": "#/definitions/AzureResourceName_ResourceGroup"
+        },
+        "MercuryV2_SubscriptionId": {
+            "$ref": "#/definitions/GUID"
+        },
+        "ObjectId_DeploymentPrincipal": {
+            "$ref": "#/definitions/GUID"
+        },
+        "ObjectId_mercengaccess": {
+            "$ref": "#/definitions/GUID"
+        },
+        "ObjectId_MercNPV2Application": {},
+        "ObjectId_mercopsaccess": {
+            "$ref": "#/definitions/GUID"
+        },
+        "ObjectId_SC-be398": {
+            "$ref": "#/definitions/GUID"
+        },
+        "ObjectId_SC-vrk83": {
+            "$ref": "#/definitions/GUID"
+        },
+        "ObjectId_SC-vsk89": {
+            "$ref": "#/definitions/GUID"
+        },
+        "ObjectId_SC-vvk08": {
+            "$ref": "#/definitions/GUID"
+        },
+        "ReconSqlServer_ClientName": {},
+        "ResourceGroup_Name": {
+            "$ref": "#/definitions/AzureResourceName_ResourceGroup"
+        },
+        "ResourcePrefix": {
+            "$ref": "#/definitions/AzureResourceName_Default"
+        },
+        "ResourcePrefix2": {
+            "$ref": "#/definitions/AzureResourceName_StorageAccount"
+        },
+        "SecurityLogs_StorageAccount_Name": {
+            "$ref": "#/definitions/AzureResourceName_StorageAccount"
+        },
+        "ServiceLocationType": {
+            "enum": [
+                "Primary",
+                "Secondary"
+            ],
+            "type": "string"
+        },
+        "ServiceName": {
+            "type": "string"
+        },
+        "ServiceTree_ComponentId": {
+            "$ref": "#/definitions/GUID"
+        },
+        "SpnPassword": {},
+        "SqlServer_ClientName": {},
+        "SqlServer_Name": {
+            "$ref": "#/definitions/AzureResourceName_Default"
+        },
+        "SubscriptionId": {
+            "$ref": "#/definitions/GUID",
+            "enum": [
+                "f0de239c-2918-484c-be23-1d5fd1935521",
+                "2f259f88-2845-4eec-8c4f-448c7e88ddec"
+            ]
+        },
+        "Synapse": {
+            "patternProperties": {
+                ".*": {
+                    "$ref": "#/definitions/SynapseWorkspaceConfiguration"
+                }
+            },
+            "required": [
+                "."
+            ],
+            "type": "object"
+        },
+        "SynapseEngineeringWorkspaceName": {},
+        "SynapseWorkspace_CustomerManagedKey_SecretName": {},
+        "SynapseWorkspace_DefaultDataLakeStorage_AccountName": {
+            "$ref": "#/definitions/AzureResourceName_StorageAccount"
+        },
+        "SynapseWorkspace_DefaultDataLakeStorage_ContainerName": {
+            "default": "synapse",
+            "type": "string"
+        },
+        "SynapseWorkspace_DefaultDataLakeStorage_NetworkAclsDefaultAction": {
+            "default": "Deny",
+            "enum": [
+                "Allow",
+                "Deny"
+            ],
+            "type": "string"
+        },
+        "SynapseWorkspace_FirewallRules": {
+            "items": {
+                "$ref": "#/definitions/IPv4FirewallRule"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+        },
+        "SynapseWorkspace_Location": {},
+        "SynapseWorkspace_ManagedResourceGroupName": {
+            "$ref": "#/definitions/AzureResourceName_ResourceGroup"
+        },
+        "SynapseWorkspace_Name": {
+            "$ref": "#/definitions/AzureResourceName_Default"
+        },
+        "SynapseWorkspace_SqlAdmin_Password": {},
+        "SynapseWorkspace_SqlAdmin_UserName": {},
+        "SynapseWorkspace_UseCustomerManagedKey": {
+            "default": false,
+            "type": "boolean"
+        },
+        "SynapseWorkspace_UserAssignedIdentity_Name": {
+            "$ref": "#/definitions/AzureResourceName_Default"
+        },
+        "Telemetry_ComponentName": {
+            "default": "DataService",
+            "type": "string"
+        },
+        "TenantId": {
+            "$ref": "#/definitions/GUID"
+        },
+        "UtpEnvironmentType": {
+            "enum": [
+                "Production",
+                "Non-production"
+            ],
+            "type": "string"
+        },
+        "VulnerabilityAssessment_StorageAccount_Name": {
+            "$ref": "#/definitions/AzureResourceName_StorageAccount"
+        }
+    },
+    "required": [
+        "ApplicationInsights_Name",
+        "CosmosDb_Account_Name",
+        "CosmosDb_Database_Name",
+        "DataFactory_Name",
+        "EnvironmentType",
+        "KeyVault_Name",
+        "Location",
+        "LogAnalyticsWorkspace_Name",
+        "ResourceGroup_Name",
+        "SecurityLogs_StorageAccount_Name",
+        "ServiceLocationType",
+        "SubscriptionId",
+        "SynapseWorkspace_SqlAdmin_Password",
+        "SynapseWorkspace_SqlAdmin_UserName",
+        "SynapseWorkspace_DefaultDataLakeStorage_AccountName",
+        "SynapseWorkspace_DefaultDataLakeStorage_ContainerName",
+        "SynapseWorkspace_UserAssignedIdentity_Name",
+        "TenantId",
+        "UtpEnvironmentType",
+        "VulnerabilityAssessment_StorageAccount_Name"
+    ],
+    "title": "Environment config",
+    "type": "object"
+}

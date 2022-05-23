@@ -1,0 +1,520 @@
+{
+    "$BuildId": "__BuildId__",
+    "$schema": "../Environment.schema.json",
+    "$TemplateParameterCopy": {
+        "SynapseWorkspace": {
+            "mercurysynapsedev": {
+                "*KeyVault_Name": "__KeyVault_Name__",
+                "CustomerManagedKey_SecretName": "SynapseKey",
+                "ManagedResourceGroupName": "",
+                "Name": "mercurysynapsedev",
+                "UseCustomerManagedKey": true,
+                "UseExistingStorageAccount": true,
+                "UserAssignedIdentity_Name": "mercurysynapsedev-mi"
+            }
+        },
+        "SynapseWorkspace_BigDataPool": {
+            "DataFeeder": {
+                "AutoPauseDelayInMinutes": 15,
+                "AutoPauseEnabled": true,
+                "AutoScaleEnabled": true,
+                "AutoScaleMaxNodeCount": 10,
+                "AutoScaleMinNodeCount": 3,
+                "DynamicExecutorAllocationEnabled": true,
+                "DynamicExecutorAllocationMaxExecutors": 9,
+                "DynamicExecutorAllocationMinExecutors": 3,
+                "Name": "DataFeeder",
+                "NodeCount": 3,
+                "NodeSize": "Large",
+                "NodeSizeFamily": "MemoryOptimized",
+                "SessionLevelPackagesEnabled": true,
+                "SparkVersion": "2.4"
+            },
+            "DataProcessing": {
+                "AutoPauseDelayInMinutes": 15,
+                "AutoPauseEnabled": true,
+                "AutoScaleEnabled": true,
+                "AutoScaleMaxNodeCount": 18,
+                "AutoScaleMinNodeCount": 3,
+                "DynamicExecutorAllocationEnabled": true,
+                "DynamicExecutorAllocationMaxExecutors": 17,
+                "DynamicExecutorAllocationMinExecutors": 3,
+                "Name": "DataProcessing",
+                "NodeCount": 3,
+                "NodeSize": "Large",
+                "NodeSizeFamily": "MemoryOptimized",
+                "SessionLevelPackagesEnabled": true,
+                "SparkVersion": "2.4"
+            },
+            "DataRecon": {
+                "AutoPauseDelayInMinutes": 15,
+                "AutoPauseEnabled": true,
+                "AutoScaleEnabled": true,
+                "AutoScaleMaxNodeCount": 18,
+                "AutoScaleMinNodeCount": 3,
+                "DynamicExecutorAllocationEnabled": true,
+                "DynamicExecutorAllocationMaxExecutors": 17,
+                "DynamicExecutorAllocationMinExecutors": 3,
+                "Name": "DataRecon",
+                "NodeCount": 3,
+                "NodeSize": "Large",
+                "NodeSizeFamily": "MemoryOptimized",
+                "SessionLevelPackagesEnabled": true,
+                "SparkVersion": "2.4"
+            },
+            "FunctionalTest": {
+                "AutoPauseDelayInMinutes": 15,
+                "AutoPauseEnabled": true,
+                "AutoScaleEnabled": true,
+                "AutoScaleMaxNodeCount": 10,
+                "AutoScaleMinNodeCount": 3,
+                "DynamicExecutorAllocationEnabled": true,
+                "DynamicExecutorAllocationMaxExecutors": 9,
+                "DynamicExecutorAllocationMinExecutors": 3,
+                "Name": "FunctionalTest",
+                "NodeCount": 3,
+                "NodeSize": "Large",
+                "NodeSizeFamily": "MemoryOptimized",
+                "SessionLevelPackagesEnabled": true,
+                "SparkVersion": "2.4"
+            },
+            "GLAudit": {
+                "AutoPauseDelayInMinutes": 15,
+                "AutoPauseEnabled": true,
+                "AutoScaleEnabled": true,
+                "AutoScaleMaxNodeCount": 18,
+                "AutoScaleMinNodeCount": 3,
+                "DynamicExecutorAllocationEnabled": false,
+                "DynamicExecutorAllocationMaxExecutors": 9,
+                "DynamicExecutorAllocationMinExecutors": 3,
+                "Name": "GLAudit",
+                "NodeCount": 3,
+                "NodeSize": "Large",
+                "NodeSizeFamily": "MemoryOptimized",
+                "SessionLevelPackagesEnabled": true,
+                "SparkVersion": "2.4"
+            }
+        }
+    },
+    "ApplicationInsights_Name": "MercuryV2DevApp",
+    "CosmosDb_Account_Name": "mercuryv2dev-cda",
+    "CosmosDb_Database_Name": "DataIngestionDb",
+    "CosmosDb_PrimaryAccount_Name": "__CosmosDb_Account_Name__",
+    "CosmosDb_PrimaryAccount_ResourceGroupName": "__ResourceGroup_Name__",
+    "DataFactory_Name": "MercuryExtractorAdfDev",
+    "DataLakePublicStore_StorageAccountName": "mercurydatalakeppe",
+    "DataLakeStorageAccount_Name": "mercuryv2devdatalake",
+    "DiagnosticStorageAccount_Name": "mercuryv2",
+    "EnvironmentType": "dev",
+    "EventHub_Namespace_Name": "Mercv2DevEH",
+    "FinanceDataLake_Hana_StorageAccountName_FQDN": "abfss://securezone@sapdzfdlakeppe.dfs.core.windows.net/SAPDropZone/",
+    "FinanceDataLake_StorageAccountName": "sapfinancedatalakeppe",
+    "KeyVault_AccessPolicies": [
+        {
+            "objectId": "__ObjectId_DeploymentPrincipal__",
+            "permissions": {
+                "secrets": [
+                    "list",
+                    "get",
+                    "set"
+                ]
+            },
+            "tenantId": "__TenantId__"
+        },
+        {
+            "objectId": "__ObjectId_mercengaccess__",
+            "permissions": {
+                "secrets": [
+                    "list",
+                    "get",
+                    "set"
+                ]
+            },
+            "tenantId": "__TenantId__"
+        }
+    ],
+    "KeyVault_EnablePurgeProtection": true,
+    "KeyVault_EnableSoftDelete": true,
+    "KeyVault_Name": "mercuryvedevkv",
+    "Location": "westus2",
+    "LogAnalyticsWorkspace_Name": "MercuryV2Dev",
+    "ObjectId_DeploymentPrincipal": "d8fd5406-b2a4-4294-ae01-ebe91ada0fc6",
+    "ObjectId_mercengaccess": "78f29fdf-570f-453d-abf1-c8feae8a81a3",
+    "ObjectId_MercNPV2Application": "846c8712-63f7-4b37-a94c-32df4c574642",
+    "ReconSqlServer_ClientName": "__SqlServer_Name__",
+    "ResourceGroup_Name": "553-Mercury-V2",
+    "SecurityLogs_StorageAccount_Name": "__DiagnosticStorageAccount_Name__",
+    "ServiceLocationType": "Primary",
+    "ServiceTree_ComponentId": "b32f5308-6741-4fca-b914-f32b2610d9d3",
+    "SqlServer_ClientName": "mercurysqldev",
+    "SqlServer_Name": "mercurysqldev",
+    "SubscriptionId": "f0de239c-2918-484c-be23-1d5fd1935521",
+    "Synapse": {
+        ".": {
+            "BigDataPool_SparkConfigs": {
+                "DataFeeder": [
+                    "spark.yarn.maxAppAttempts 1"
+                ],
+                "DataProcessing": [
+                    "spark.yarn.maxAppAttempts 1"
+                ],
+                "DataRecon": [
+                    "spark.yarn.maxAppAttempts 1"
+                ],
+                "FunctionalTest": [
+                    "spark.yarn.maxAppAttempts 1"
+                ],
+                "GLAudit": [
+                    "spark.yarn.maxAppAttempts 1"
+                ]
+            },
+            "LinkedServices": {
+                "MercV2KV": {
+                    "properties_typeProperties_baseUrl": "https://__KeyVault_Name__.vault.azure.net/"
+                },
+                "MercV2ReconSql": {
+                    "properties_typeProperties_connectionString": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=__SqlServer_ClientName__.database.windows.net;Initial Catalog=mercv2recon;",
+                    "properties_typeProperties_servicePrincipalId": "7a7b697e-79f2-4bbc-8bee-ad6e9f5cfe5e"
+                },
+                "MercV2SPN": {
+                    "properties_typeProperties_dataLakeStoreUri": "adl://sapfinancedatalakeppe.azuredatalakestore.net",
+                    "properties_typeProperties_servicePrincipalId": "7a7b697e-79f2-4bbc-8bee-ad6e9f5cfe5e"
+                },
+                "MercV2Sql": {
+                    "properties_typeProperties_connectionString": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=__SqlServer_ClientName__.database.windows.net;Initial Catalog=MercuryEntities;",
+                    "properties_typeProperties_servicePrincipalId": "7a7b697e-79f2-4bbc-8bee-ad6e9f5cfe5e"
+                }
+            },
+            "ManagedPrivateEndpoints": {
+                "MercV2Cosmos": {
+                    "GroupId": "sql",
+                    "TargetResourceName": "__CosmosDb_Account_Name__",
+                    "TargetResourceType": "Microsoft.DocumentDb/databaseAccounts"
+                },
+                "MercV2EHubPvtEndPoint": {
+                    "GroupId": "namespace",
+                    "TargetResourceName": "__EventHub_Namespace_Name__",
+                    "TargetResourceType": "Microsoft.EventHub/namespaces"
+                },
+                "MercV2KV": {
+                    "GroupId": "vault",
+                    "TargetResourceName": "__KeyVault_Name__",
+                    "TargetResourceType": "Microsoft.KeyVault/vaults"
+                },
+                "MercV2PvtLake": {
+                    "GroupId": "dfs",
+                    "TargetResourceName": "__DataLakeStorageAccount_Name__",
+                    "TargetResourceType": "Microsoft.Storage/storageAccounts"
+                },
+                "MercV2PvtLakeBlob": {
+                    "GroupId": "blob",
+                    "TargetResourceName": "__DataLakeStorageAccount_Name__",
+                    "TargetResourceType": "Microsoft.Storage/storageAccounts"
+                },
+                "MercV2Sql": {
+                    "GroupId": "sqlServer",
+                    "TargetResourceName": "__SqlServer_ClientName__",
+                    "TargetResourceType": "Microsoft.Sql/servers"
+                }
+            },
+            "Notebooks": {
+                "GLAuditCheckUnprocessedFilesNotebook": {
+                    "properties_metadata_a365ComputeOptions_endpoint": "https://__SynapseWorkspace_Name__.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/GLAudit",
+                    "properties_metadata_a365ComputeOptions_id": "/subscriptions/__SubscriptionId__/resourceGroups/__ResourceGroup_Name__/providers/Microsoft.Synapse/workspaces/__SynapseWorkspace_Name__/bigDataPools/GLAudit"
+                },
+                "GLAuditNotebook": {
+                    "properties_metadata_a365ComputeOptions_endpoint": "https://__SynapseWorkspace_Name__.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/GLAudit",
+                    "properties_metadata_a365ComputeOptions_id": "/subscriptions/__SubscriptionId__/resourceGroups/__ResourceGroup_Name__/providers/Microsoft.Synapse/workspaces/__SynapseWorkspace_Name__/bigDataPools/GLAudit"
+                }
+            },
+            "Pipelines": {
+                "GLAuditCheckUnprocessedFilesPipeline": {
+                    "properties_parameters_environment_defaultValue": "__EnvironmentType__",
+                    "properties_parameters_fdlStorage_defaultValue": "adl://__FinanceDataLake_StorageAccountName__.azuredatalakestore.net",
+                    "properties_parameters_keyVaultName_defaultValue": "__KeyVault_Name__"
+                },
+                "GLAuditPipeline": {
+                    "properties_parameters_environment_defaultValue": "__EnvironmentType__",
+                    "properties_parameters_keyVaultName_defaultValue": "__KeyVault_Name__",
+                    "properties_parameters_sqlPasswordSecretName_defaultValue": "SqlPassword",
+                    "properties_parameters_sqlUserSecretName_defaultValue": "SqlUser",
+                    "properties_parameters_storageName_defaultValue": "abfss://mercury@__DataLakeStorageAccount_Name__.dfs.core.windows.net/"
+                }
+            },
+            "RoleAssignments": [
+                {
+                    "Name": "Mercury Engineering SC-ALT Group",
+                    "ObjectId": "__ObjectId_mercengaccess__",
+                    "PrincipalType": "group",
+                    "RoleDefinitionName": "Synapse Administrator"
+                },
+                {
+                    "Name": "MercNPV2Application",
+                    "ObjectId": "__ObjectId_MercNPV2Application__",
+                    "PrincipalType": "ServicePrincipal",
+                    "RoleDefinitionName": "Synapse Administrator"
+                }
+            ],
+            "SparkJobDefinitions": {
+                "DataFeeder": {
+                    "properties_jobProperties_conf_spark.dynamicAllocation.enabled": "false",
+                    "properties_jobProperties_conf_spark.dynamicAllocation.maxExecutors": "4",
+                    "properties_jobProperties_conf_spark.dynamicAllocation.minExecutors": "4",
+                    "properties_jobProperties_driverCores": 8,
+                    "properties_jobProperties_driverMemory": "56g",
+                    "properties_jobProperties_executorCores": 8,
+                    "properties_jobProperties_executorMemory": "56g",
+                    "properties_jobProperties_numExecutors": 4
+                },
+                "DataProcessing": {
+                    "properties_jobProperties_conf_spark.dynamicAllocation.enabled": "false",
+                    "properties_jobProperties_conf_spark.dynamicAllocation.maxExecutors": "8",
+                    "properties_jobProperties_conf_spark.dynamicAllocation.minExecutors": "8",
+                    "properties_jobProperties_driverCores": 8,
+                    "properties_jobProperties_driverMemory": "56g",
+                    "properties_jobProperties_executorCores": 8,
+                    "properties_jobProperties_executorMemory": "56g",
+                    "properties_jobProperties_numExecutors": 8
+                },
+                "DataReconciliation": {
+                    "properties_jobProperties_conf_spark.dynamicAllocation.enabled": "false",
+                    "properties_jobProperties_conf_spark.dynamicAllocation.maxExecutors": "8",
+                    "properties_jobProperties_conf_spark.dynamicAllocation.minExecutors": "8",
+                    "properties_jobProperties_driverCores": 8,
+                    "properties_jobProperties_driverMemory": "56g",
+                    "properties_jobProperties_executorCores": 8,
+                    "properties_jobProperties_executorMemory": "56g",
+                    "properties_jobProperties_numExecutors": 8
+                },
+                "FunctionalTest": {
+                    "properties_jobProperties_conf_spark.dynamicAllocation.enabled": "false",
+                    "properties_jobProperties_conf_spark.dynamicAllocation.maxExecutors": "4",
+                    "properties_jobProperties_conf_spark.dynamicAllocation.minExecutors": "4",
+                    "properties_jobProperties_driverCores": 8,
+                    "properties_jobProperties_driverMemory": "56g",
+                    "properties_jobProperties_executorCores": 8,
+                    "properties_jobProperties_executorMemory": "56g",
+                    "properties_jobProperties_numExecutors": 4
+                }
+            }
+        }
+    },
+    "SynapseWorkspace_DefaultDataLakeStorage_AccountName": "mercuryv2devdatalake",
+    "SynapseWorkspace_DefaultDataLakeStorage_ContainerName": "mercurysynapsedev1",
+    "SynapseWorkspace_FirewallRules": [
+        {
+            "EndIpAddress": "167.220.227.255",
+            "Name": "Corp_Bangalore_167.220.226.0_23",
+            "StartIpAddress": "167.220.226.0"
+        },
+        {
+            "EndIpAddress": "157.58.212.191",
+            "Name": "Corp_Cheyenne_157.58.212.128_26",
+            "StartIpAddress": "157.58.212.128"
+        },
+        {
+            "EndIpAddress": "157.58.212.127",
+            "Name": "Corp_Cheyenne_157.58.212.64_26",
+            "StartIpAddress": "157.58.212.64"
+        },
+        {
+            "EndIpAddress": "157.58.213.255",
+            "Name": "Corp_Cheyenne_157.58.213.192_26",
+            "StartIpAddress": "157.58.213.192"
+        },
+        {
+            "EndIpAddress": "157.58.213.127",
+            "Name": "Corp_Cheyenne_157.58.213.64_26",
+            "StartIpAddress": "157.58.213.64"
+        },
+        {
+            "EndIpAddress": "157.58.214.191",
+            "Name": "Corp_Cheyenne_157.58.214.128_26",
+            "StartIpAddress": "157.58.214.128"
+        },
+        {
+            "EndIpAddress": "157.58.214.255",
+            "Name": "Corp_Cheyenne_157.58.214.192_26",
+            "StartIpAddress": "157.58.214.192"
+        },
+        {
+            "EndIpAddress": "167.220.238.31",
+            "Name": "Corp_Hyderabad_167.220.238.0_27",
+            "StartIpAddress": "167.220.238.0"
+        },
+        {
+            "EndIpAddress": "167.220.238.159",
+            "Name": "Corp_Hyderabad_167.220.238.128_27",
+            "StartIpAddress": "167.220.238.128"
+        },
+        {
+            "EndIpAddress": "167.220.238.223",
+            "Name": "Corp_Hyderabad_167.220.238.192_27",
+            "StartIpAddress": "167.220.238.192"
+        },
+        {
+            "EndIpAddress": "167.220.238.95",
+            "Name": "Corp_Hyderabad_167.220.238.64_27",
+            "StartIpAddress": "167.220.238.64"
+        },
+        {
+            "EndIpAddress": "167.220.70.127",
+            "Name": "Corp_Quincy_167.220.70.64_26",
+            "StartIpAddress": "167.220.70.64"
+        },
+        {
+            "EndIpAddress": "167.220.76.255",
+            "Name": "Corp_Quincy_167.220.76.192_26",
+            "StartIpAddress": "167.220.76.192"
+        },
+        {
+            "EndIpAddress": "167.220.77.127",
+            "Name": "Corp_Quincy_167.220.77.64_26",
+            "StartIpAddress": "167.220.77.64"
+        },
+        {
+            "EndIpAddress": "167.220.80.255",
+            "Name": "Corp_Quincy_167.220.80.192_26",
+            "StartIpAddress": "167.220.80.192"
+        },
+        {
+            "EndIpAddress": "167.220.81.191",
+            "Name": "Corp_Quincy_167.220.81.128_26",
+            "StartIpAddress": "167.220.81.128"
+        },
+        {
+            "EndIpAddress": "167.220.81.255",
+            "Name": "Corp_Quincy_167.220.81.192_26",
+            "StartIpAddress": "167.220.81.192"
+        },
+        {
+            "EndIpAddress": "131.107.1.255",
+            "Name": "Corp_Redmond_131.107.1.128_25",
+            "StartIpAddress": "131.107.1.128"
+        },
+        {
+            "EndIpAddress": "131.107.132.31",
+            "Name": "Corp_Redmond_131.107.132.16_28",
+            "StartIpAddress": "131.107.132.16"
+        },
+        {
+            "EndIpAddress": "131.107.132.47",
+            "Name": "Corp_Redmond_131.107.132.32_28",
+            "StartIpAddress": "131.107.132.32"
+        },
+        {
+            "EndIpAddress": "131.107.147.255",
+            "Name": "Corp_Redmond_131.107.147.0_24",
+            "StartIpAddress": "131.107.147.0"
+        },
+        {
+            "EndIpAddress": "131.107.159.255",
+            "Name": "Corp_Redmond_131.107.159.0_24",
+            "StartIpAddress": "131.107.159.0"
+        },
+        {
+            "EndIpAddress": "131.107.160.255",
+            "Name": "Corp_Redmond_131.107.160.0_24",
+            "StartIpAddress": "131.107.160.0"
+        },
+        {
+            "EndIpAddress": "131.107.174.255",
+            "Name": "Corp_Redmond_131.107.174.0_24",
+            "StartIpAddress": "131.107.174.0"
+        },
+        {
+            "EndIpAddress": "131.107.8.127",
+            "Name": "Corp_Redmond_131.107.8.0_25",
+            "StartIpAddress": "131.107.8.0"
+        },
+        {
+            "EndIpAddress": "167.220.1.255",
+            "Name": "Corp_Redmond_167.220.0.0_23",
+            "StartIpAddress": "167.220.0.0"
+        },
+        {
+            "EndIpAddress": "167.220.2.255",
+            "Name": "Corp_Redmond_167.220.2.0_24",
+            "StartIpAddress": "167.220.2.0"
+        },
+        {
+            "EndIpAddress": "25.7.255.255",
+            "Name": "SAW_APAC_CorpNet_25.7.0.0_16",
+            "StartIpAddress": "25.7.0.0"
+        },
+        {
+            "EndIpAddress": "167.220.249.191",
+            "Name": "SAW_APAC_E3_167.220.249.128_26",
+            "StartIpAddress": "167.220.249.128"
+        },
+        {
+            "EndIpAddress": "13.106.4.127",
+            "Name": "SAW_APAC_legacy_13.106.4.96_27",
+            "StartIpAddress": "13.106.4.96"
+        },
+        {
+            "EndIpAddress": "25.4.255.255",
+            "Name": "SAW_CPDC_CorpNet_25.4.0.0_16",
+            "StartIpAddress": "25.4.0.0"
+        },
+        {
+            "EndIpAddress": "157.58.216.127",
+            "Name": "SAW_CPDC_E3_157.58.216.64_26",
+            "StartIpAddress": "157.58.216.64"
+        },
+        {
+            "EndIpAddress": "207.68.190.63",
+            "Name": "SAW_CPDC_Legacy_207.68.190.32_27",
+            "StartIpAddress": "207.68.190.32"
+        },
+        {
+            "EndIpAddress": "25.6.255.255",
+            "Name": "SAW_Dublin_CorpNet_25.6.0.0_16",
+            "StartIpAddress": "25.6.0.0"
+        },
+        {
+            "EndIpAddress": "194.69.119.127",
+            "Name": "SAW_Dublin_E3_194.69.119.64_26",
+            "StartIpAddress": "194.69.119.64"
+        },
+        {
+            "EndIpAddress": "13.106.174.63",
+            "Name": "SAW_Dublin_legacy_13.106.174.32_27",
+            "StartIpAddress": "13.106.174.32"
+        },
+        {
+            "EndIpAddress": "25.5.255.255",
+            "Name": "SAW_MOPR_CorpNet_25.5.0.0_16",
+            "StartIpAddress": "25.5.0.0"
+        },
+        {
+            "EndIpAddress": "13.106.78.63",
+            "Name": "SAW_MOPR_Legacy_13.106.78.32_27",
+            "StartIpAddress": "13.106.78.32"
+        }
+    ],
+    "SynapseWorkspace_Location": "CentralUS",
+    "SynapseWorkspace_ManagedResourceGroupName": "Managed-Synapse-mercurysynapsedev1-rg",
+    "SynapseWorkspace_Name": "mercurysynapsedev1",
+    "SynapseWorkspace_SqlAdmin_Password": {
+        "reference": {
+            "keyVault": {
+                "id": "/subscriptions/__SubscriptionId__/resourceGroups/__ResourceGroup_Name__/providers/Microsoft.KeyVault/vaults/__KeyVault_Name__"
+            },
+            "secretName": "SqlPassword"
+        }
+    },
+    "SynapseWorkspace_SqlAdmin_UserName": {
+        "reference": {
+            "keyVault": {
+                "id": "/subscriptions/__SubscriptionId__/resourceGroups/__ResourceGroup_Name__/providers/Microsoft.KeyVault/vaults/__KeyVault_Name__"
+            },
+            "secretName": "SqlUser"
+        }
+    },
+    "SynapseWorkspace_UseCustomerManagedKey": false,
+    "SynapseWorkspace_UserAssignedIdentity_Name": "mercurysynapsedev1-mi",
+    "TenantId": "72f988bf-86f1-41af-91ab-2d7cd011db47",
+    "UtpEnvironmentType": "Non-production",
+    "VulnerabilityAssessment_StorageAccount_Name": "__DiagnosticStorageAccount_Name__"
+}

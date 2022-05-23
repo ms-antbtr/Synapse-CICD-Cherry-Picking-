@@ -1,0 +1,106 @@
+parameters:
+  # Name of artifact in the current pipeline containing the files to be validated
+  - name: ArtifactName
+    type: string
+  # Type of build
+  - name: BuildType
+    type: string
+    values: [CI, PR, main]
+  # Job name
+  - name: JobName
+    type: string
+    default: ValidateBuildArtifactFileList
+  # Job displayName
+  - name: JobDisplayName
+    type: string
+    default: 'Validate build artifact file list'
+  # Job dependencies
+  - name: DependsOn
+    type: object
+    default: []
+  # File containing the expected list of files
+  - name: ExpectedFileListFile
+    type: string
+  # Whether to fail the build on validation failure
+  - name: ErrorOnFileMismatch
+    type: boolean
+    default: false
+  # Path to the PowerShell scripts
+  - name: PowerShellScriptPath
+    type: string
+    default: $(Build.SourcesDirectory)/Common/PowerShell/Scripts
+
+jobs:
+  - job: ${{ parameters.JobName }}
+    displayName: ${{ parameters.JobDisplayName }}
+    ${{ if gt(length(parameters.DependsOn), 0) }}:
+      dependsOn: ${{ parameters.DependsOn }}
+    variables:
+      BuildId: ${{ parameters.BuildType }}-$(Build.BuildNumber)
+      TempFolder: $(Pipeline.Workspace)/FileValidationTemp
+    steps:
+      #
+      # Download the specified artifact from the current build pipeline
+      #
+      # These are stored in '$(Pipeline.Workspace)/BuildArtifacts'
+      #
+      - task: DownloadPipelineArtifact@2
+        displayName: 'Download artifact "${{ parameters.ArtifactName }}" from current pipeline'
+        inputs:
+          artifact: ${{ parameters.ArtifactName }}
+          path: $(Pipeline.Workspace)/BuildArtifacts
+          source: current
+
+      #
+      # List workspace files
+      #
+      - template: ListPipelineWorkspaceFiles.steps.template.yaml
+
+      #
+      # Copy PowerShell modules from source to user module path
+      #
+      # `ConfigFunctions` module is used by the PowerShell scripts below
+      #
+      - template: CopyPowerShellModuleToProfile.steps.template.yaml
+        parameters:
+          CopyToBuildArtifacts: false
+
+      #
+      # Some file names will be dynamic, such as including the build id, e.g. "CI-20220325.1". These values can be tokenized
+      # in the file list and these tokens will be replaced by the this step.
+      #
+      # "BuildId" is automatically included in the token replacement and is currently the only value replaced. Additional
+      # tokens can be added in the future.
+      #
+      - task: PowerShell@2
+        displayName: 'Process expected file list file tokens (pwsh)'
+        inputs:
+          errorActionPreference: stop
+          filePath: '${{ parameters.PowerShellScriptPath }}/CopyExpectedFileListAndReplaceTokens.ps1'
+          pwsh: true
+          targetType: filePath
+          verbosePreference: continue
+          arguments: >
+            -BuildId '$(BuildId)'
+            -SourceFile '${{ parameters.ExpectedFileListFile }}'
+            -OutputFolder '$(TempFolder)'
+            -OutputFileName ExpectedFileList.txt
+
+      #
+      # Compare the actual file list with the expected file list. This will either be a build warning (-ErrorOnFileMismatch $false)
+      # or error failing the build (-ErrorOnFileMismatch $true)
+      #
+      - task: PowerShell@2
+        displayName: 'Validate expected files (pwsh)'
+        inputs:
+          errorActionPreference: stop
+          filePath: '${{ parameters.PowerShellScriptPath }}/ValidateExpectedFileList.ps1'
+          pwsh: true
+          targetType: filePath
+          verbosePreference: continue
+          arguments: >
+            -BuildId '$(BuildId)'
+            -ErrorOnFileMismatch $${{ parameters.ErrorOnFileMismatch }}
+            -ExpectedFileListFile '$(TempFolder)/ExpectedFileList.txt'
+            -OutputFolder '$(TempFolder)'
+            -Path '$(Pipeline.Workspace)/BuildArtifacts'
