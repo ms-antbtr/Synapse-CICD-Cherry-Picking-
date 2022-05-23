@@ -14,3 +14,6 @@ And you wanted to promote a single artifact such as 1 Pipeline from a UAT Synase
 With this solution explained below; what you have the ability in doing is promoting single artifacts such as a single pipeline from environments. Additionally you have the ability to enter key words / names for this migration to occur.
 
 ![image](https://user-images.githubusercontent.com/72390693/169803148-dff5c15f-fbd0-4403-a99a-e0c854a4acde.png)
+
+
+# The following steps sets out how to implement the solution
